@@ -251,7 +251,7 @@ defmodule Transformation.Size do
             {:error, :invalid_size}
 
           maintain_ratio? ->
-            {dividend, divisor} = if w > h, do: {w, image_width}, else: {h, image_height}
+            {dividend, divisor} = if w < h, do: {w, image_width}, else: {h, image_height}
             Operation.resize!(image, dividend / divisor)
 
           true ->
