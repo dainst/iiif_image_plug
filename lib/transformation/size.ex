@@ -12,130 +12,50 @@ defmodule Transformation.Size do
 
     image_area = image_width * image_height
 
+    # Select the smallest factor that would scale the image to one of the plug's maxima.
+    # We filter only for values < 1.
+    # - If it is larger than 1, the image would get scaled up by the factor, we do not want that here (that would be "^max").
+    # - If it is smaller than 1, the image will get scaled down.
+    # - If all factors are larger than 1, all dimensions and the area fall within the plugs maxima and we fallback to a factor of 1 (no scaling).
+
     factor =
-      cond do
-        image_area > plug_opts.max_area ->
-          factor = :math.sqrt(plug_opts.max_area / image_area)
-
-          width_with_factor = image_width * factor
-          height_with_factor = image_height * factor
-
-          with {:width_ok, true} <- {:width_ok, width_with_factor < plug_opts.max_width},
-               {:height_ok, true} <- {:height_ok, height_with_factor < plug_opts.max_height} do
-            factor
-          else
-            {:height_ok, false} ->
-              plug_opts.max_height / image_height
-
-            {:width_ok, false} ->
-              factor = plug_opts.max_width / image_width
-
-              height_with_factor = image_height * factor
-
-              if height_with_factor > plug_opts.max_height do
-                plug_opts.max_height / image_height
-              else
-                factor
-              end
-          end
-
-        image_width > plug_opts.max_width ->
-          factor = plug_opts.max_width / image_width
-
-          height_with_factor = image_height * factor
-
-          if height_with_factor > plug_opts.max_height do
-            plug_opts.max_height / image_height
-          else
-            factor
-          end
-
-        image_height > plug_opts.max_height ->
+      Enum.min(
+        [
+          :math.sqrt(plug_opts.max_area / image_area),
+          plug_opts.max_width / image_width,
           plug_opts.max_height / image_height
+        ]
+        |> Enum.filter(fn val -> val < 1 end),
+        fn ->
+          1
+        end
+      )
 
-        true ->
-          1.0
-      end
-
-    Operation.resize!(image, factor, vscale: factor)
+    if factor == 1 do
+      image
+    else
+      Operation.resize!(image, factor)
+    end
   end
 
   def apply(%Image{} = image, "^max", plug_opts) do
-    # TODO: This is still incomplete and turning into spaghetti.
-    # - should probably a recursive `fit_factor_for_opts` function
-    # - rounding errors resize! seems to round up pixel values sometimes,
-    #   what might cause the area a side to exceed the plug's limit even
-    #   though the factor passed was correct.
     image_width = Image.width(image)
     image_height = Image.height(image)
 
     image_area = image_width * image_height
 
+    # Select the smallest factor that would scale the image to one of the plug's maxima.
     factor =
-      cond do
-        image_area < plug_opts.max_area ->
-          factor = :math.sqrt(plug_opts.max_area / image_area)
-
-          width_with_factor = image_width * factor
-          height_with_factor = image_height * factor
-
-          with {:width_ok, true} <- {:width_ok, width_with_factor < plug_opts.max_width},
-               {:height_ok, true} <- {:height_ok, height_with_factor < plug_opts.max_height} do
-            factor
-          else
-            {:height_ok, false} ->
-              factor = plug_opts.max_height / image_height
-
-              width_with_factor = image_width * factor
-
-              if width_with_factor > plug_opts.max_width do
-                plug_opts.max_width / image_width
-              else
-                factor
-              end
-
-            {:width_ok, false} ->
-              factor = plug_opts.max_width / image_width
-
-              height_with_factor = image_height * factor
-
-              if height_with_factor > plug_opts.max_height do
-                plug_opts.max_height / image_height
-              else
-                factor
-              end
-          end
-
-        image_width < plug_opts.max_width ->
-          factor = plug_opts.max_width / image_width
-
-          height_with_factor = image_height * factor
-
-          if height_with_factor > plug_opts.max_height do
-            plug_opts.max_height / image_height
-          else
-            factor
-          end
-
-        image_height < plug_opts.max_height ->
-          factor = plug_opts.max_height / image_height
-
-          width_with_factor = image_width * factor
-
-          if width_with_factor > plug_opts.max_width do
-            plug_opts.max_width / image_width
-          else
-            factor
-          end
-
-        true ->
-          1.0
-      end
+      Enum.min([
+        :math.sqrt(plug_opts.max_area / image_area),
+        plug_opts.max_width / image_width,
+        plug_opts.max_height / image_height
+      ])
 
     Operation.resize!(image, factor)
   end
 
-  def apply(%Image{} = image, size_parameter, _plug_opts) when is_binary(size_parameter) do
+  def apply(%Image{} = image, size_parameter, plug_opts) when is_binary(size_parameter) do
     upscale? = String.starts_with?(size_parameter, "^")
     size_parameter = String.replace_leading(size_parameter, "^", "")
 
@@ -147,11 +67,28 @@ defmodule Transformation.Size do
       |> String.replace_leading("pct:", "")
       |> Integer.parse()
       |> case do
-        {percent, ""} when percent >= 0 and percent > 100 and upscale? ->
-          # TODO: fit factor to plug_opts
-          Operation.resize!(image, percent / 100)
+        {percent, ""} when percent >= 0 and upscale? ->
+          requested_factor = percent / 100
 
-        {percent, ""} when percent >= 0 and percent > 100 ->
+          image_width = Image.width(image)
+          image_height = Image.height(image)
+          image_area = image_width * image_height
+
+          valid_maximum_factor =
+            Enum.min([
+              :math.sqrt(plug_opts.max_area / image_area),
+              plug_opts.max_width / image_width,
+              plug_opts.max_height / image_height
+            ])
+
+          factor =
+            if requested_factor < valid_maximum_factor,
+              do: requested_factor,
+              else: valid_maximum_factor
+
+          Operation.resize!(image, factor)
+
+        {percent, ""} when percent > 100 ->
           {:error, :invalid_size}
 
         {percent, ""} when percent >= 0 ->
@@ -163,13 +100,19 @@ defmodule Transformation.Size do
     else
       w_h = String.split(size_parameter, ",")
 
-      apply_w_h_parameters(image, w_h, upscale?, maintain_ratio?)
+      apply_w_h_parameters(image, w_h, upscale?, maintain_ratio?, plug_opts)
     end
   end
 
   def apply(error, _, _), do: error
 
-  defp apply_w_h_parameters(image, [w_parameter, ""], upscale?, _maintain_ratio?) do
+  defp apply_w_h_parameters(
+         image,
+         [w_parameter, ""],
+         upscale?,
+         _maintain_ratio?,
+         %Opts{} = plug_opts
+       ) do
     Integer.parse(w_parameter)
     |> case do
       {w, ""} ->
@@ -177,8 +120,24 @@ defmodule Transformation.Size do
 
         cond do
           upscale? ->
-            # TODO: fit factor to plug_opts
-            Operation.resize!(image, w / image_width)
+            image_height = Image.height(image)
+            image_area = image_width * image_height
+
+            requested_factor = w / image_width
+
+            valid_maximum_factor =
+              Enum.min([
+                :math.sqrt(plug_opts.max_area / image_area),
+                plug_opts.max_width / image_width,
+                plug_opts.max_height / image_height
+              ])
+
+            factor =
+              if requested_factor < valid_maximum_factor,
+                do: requested_factor,
+                else: valid_maximum_factor
+
+            Operation.resize!(image, factor)
 
           w > image_width ->
             {:error, :invalid_size}
@@ -192,7 +151,13 @@ defmodule Transformation.Size do
     end
   end
 
-  defp apply_w_h_parameters(image, ["", h_parameter], upscale?, _maintain_ratio?) do
+  defp apply_w_h_parameters(
+         image,
+         ["", h_parameter],
+         upscale?,
+         _maintain_ratio?,
+         %Opts{} = plug_opts
+       ) do
     Integer.parse(h_parameter)
     |> case do
       {h, ""} ->
@@ -200,8 +165,23 @@ defmodule Transformation.Size do
 
         cond do
           upscale? ->
-            # TODO: fit factor to plug_opts
-            Operation.resize!(image, h / image_height)
+            requested_factor = h / image_height
+            image_width = Image.width(image)
+            image_area = image_width * image_height
+
+            valid_maximum_factor =
+              Enum.min([
+                :math.sqrt(plug_opts.max_area / image_area),
+                plug_opts.max_width / image_width,
+                plug_opts.max_height / image_height
+              ])
+
+            factor =
+              if requested_factor < valid_maximum_factor,
+                do: requested_factor,
+                else: valid_maximum_factor
+
+            Operation.resize!(image, factor)
 
           h > image_height ->
             {:error, :invalid_size}
@@ -215,7 +195,13 @@ defmodule Transformation.Size do
     end
   end
 
-  defp apply_w_h_parameters(image, [w_parameter, h_parameter], upscale?, maintain_ratio?) do
+  defp apply_w_h_parameters(
+         image,
+         [w_parameter, h_parameter],
+         upscale?,
+         maintain_ratio?,
+         %Opts{} = plug_opts
+       ) do
     {Integer.parse(w_parameter), Integer.parse(h_parameter)}
     |> case do
       {{w, ""}, {h, ""}} ->
@@ -224,22 +210,42 @@ defmodule Transformation.Size do
 
         cond do
           upscale? and maintain_ratio? ->
-            # TODO: fit factor to plug_opts
             {dividend, divisor} = if w > h, do: {w, image_width}, else: {h, image_height}
-            Operation.resize!(image, dividend / divisor)
+
+            requested_factor = dividend / divisor
+
+            valid_maximum_factor =
+              Enum.min([
+                :math.sqrt(image_width * image_height),
+                plug_opts.max_width / image_width,
+                plug_opts.max_height / image_height
+              ])
+
+            factor =
+              if requested_factor < valid_maximum_factor,
+                do: requested_factor,
+                else: valid_maximum_factor
+
+            Operation.resize!(image, factor)
 
           upscale? ->
-            cond do
-              w > h ->
-                Operation.resize!(image, w / image_width, vscale: 1.0)
+            requested_width_factor = w / image_width
+            requested_height_factor = h / image_height
 
-              w < h ->
-                Operation.resize!(image, 1.0, vscale: h / image_height)
+            max_width_factor = plug_opts.max_width / image_width
+            max_height_factor = plug_opts.max_height / image_height
 
-              true ->
-                # TODO: fit factor to plug_opts
-                Operation.resize!(image, w / image_width, vscale: h / image_height)
-            end
+            width_factor =
+              if requested_width_factor < max_width_factor,
+                do: requested_width_factor,
+                else: max_width_factor
+
+            height_factor =
+              if requested_height_factor < max_height_factor,
+                do: requested_height_factor,
+                else: max_height_factor
+
+            Operation.resize!(image, width_factor, vscale: height_factor)
 
           w > image_width or h > image_height ->
             {:error, :invalid_size}
@@ -257,7 +263,7 @@ defmodule Transformation.Size do
     end
   end
 
-  defp apply_w_h_parameters(_, _, _, _) do
+  defp apply_w_h_parameters(_image, _w_h_parameter, _upscale?, _maintain_ratio?, _plug_opts) do
     {:error, :invalid_size}
   end
 end
