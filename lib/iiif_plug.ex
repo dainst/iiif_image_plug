@@ -14,8 +14,6 @@ defmodule IIIFPlug.V3 do
 
   require Logger
 
-  @api_version "3.0.0"
-
   @moduledoc """
   Documentation for `IIIFPlug`.
   """
