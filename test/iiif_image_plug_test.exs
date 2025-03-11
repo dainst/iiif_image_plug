@@ -1,8 +1,8 @@
 defmodule IIIFfPlugTest do
   use ExUnit.Case
-  doctest IIIFPlug
+  doctest IIIFImagePlug
 
   test "greets the world" do
-    assert IIIFPlug.hello() == :world
+    assert IIIFImagePlug.hello() == :world
   end
 end

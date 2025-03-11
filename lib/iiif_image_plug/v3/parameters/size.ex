@@ -1,10 +1,10 @@
-defmodule Transformation.Size do
+defmodule IIIFImagePlug.V3.Parameters.Size do
   alias Vix.Vips.{
     Operation,
     Image
   }
 
-  alias IIIFPlug.V3.Opts
+  alias IIIFImagePlug.V3.Opts
 
   def apply(%Image{} = image, "max", %Opts{} = plug_opts) do
     image_width = Image.width(image)

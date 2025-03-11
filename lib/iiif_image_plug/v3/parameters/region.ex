@@ -1,4 +1,4 @@
-defmodule Transformation.Region do
+defmodule IIIFImagePlug.V3.Parameters.Region do
   alias Vix.Vips.{
     Operation,
     Image
