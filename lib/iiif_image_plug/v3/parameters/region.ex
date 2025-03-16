@@ -1,14 +1,14 @@
-defmodule IIIFImagePlug.V3.Parameters.Region do
+defmodule IIIFImagePlug.V3.Transformer.Region do
   alias Vix.Vips.{
     Operation,
     Image
   }
 
-  def apply(%Image{} = image, "full") do
+  def parse_and_apply(%Image{} = image, "full") do
     image
   end
 
-  def apply(%Image{} = image, "square") do
+  def parse_and_apply(%Image{} = image, "square") do
     width = Image.width(image)
     height = Image.height(image)
 
@@ -27,7 +27,7 @@ defmodule IIIFImagePlug.V3.Parameters.Region do
     Operation.extract_area!(image, left, top, width, height)
   end
 
-  def apply(%Image{} = image, "pct:" <> region_params) do
+  def parse_and_apply(%Image{} = image, "pct:" <> region_params) do
     String.replace(region_params, "pct:", "")
     |> String.split(",")
     |> case do
@@ -60,7 +60,7 @@ defmodule IIIFImagePlug.V3.Parameters.Region do
         width_in_pixel = (image_width * (left / 100)) |> trunc()
         height_in_pixel = (image_height * (top / 100)) |> trunc()
 
-        __MODULE__.apply(
+        __MODULE__.parse_and_apply(
           image,
           "#{left_in_pixel},#{top_in_pixel},#{width_in_pixel},#{height_in_pixel}"
         )
@@ -70,7 +70,7 @@ defmodule IIIFImagePlug.V3.Parameters.Region do
     end
   end
 
-  def apply(%Image{} = image, region_params) when is_binary(region_params) do
+  def parse_and_apply(%Image{} = image, region_params) when is_binary(region_params) do
     region_params
     |> String.split(",")
     |> case do

@@ -3,14 +3,8 @@ defmodule IIIFImagePlug.V3 do
 
   import Plug.Conn
 
+  alias IIIFImagePlug.V3.Transformer
   alias Vix.Vips.Image
-
-  alias IIIFImagePlug.V3.Parameters.{
-    Quality,
-    Region,
-    Rotation,
-    Size
-  }
 
   require Logger
 
@@ -26,7 +20,8 @@ defmodule IIIFImagePlug.V3 do
       :max_width,
       :max_height,
       :max_area,
-      :identifier_to_path_callback
+      :identifier_to_path_callback,
+      :status_callbacks
     ]
     defstruct [
       :scheme,
@@ -35,7 +30,8 @@ defmodule IIIFImagePlug.V3 do
       :max_width,
       :max_height,
       :max_area,
-      :identifier_to_path_callback
+      :identifier_to_path_callback,
+      :status_callbacks
     ]
   end
 
@@ -51,46 +47,57 @@ defmodule IIIFImagePlug.V3 do
       max_area: opts[:max_area] || default_dimension * default_dimension,
       identifier_to_path_callback:
         opts.identifier_to_path_callback ||
-          raise("Missing callback used to construct file path from identifier.")
+          raise("Missing callback used to construct file path from identifier."),
+      status_callbacks: opts[:status_callbacks] || %{}
     }
   end
 
   def call(
         %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
-        %Opts{identifier_to_path_callback: path_callback} = opts
+        %Opts{identifier_to_path_callback: path_callback, status_callbacks: status_callbacks} =
+          opts
       ) do
     path = path_callback.(identifier)
 
-    Image.new_from_file(path)
-    |> case do
-      {:ok, file} ->
-        conn
-        |> put_resp_content_type("application/ld+json")
-        |> send_resp(
-          200,
+    with {:file_exists, true} <- {:file_exists, File.exists?(path)},
+         {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)} do
+      conn
+      |> put_resp_content_type("application/ld+json")
+      |> send_resp(
+        200,
+        %{
+          "@context": "http://iiif.io/api/image/3/context.json",
+          id: "#{opts.scheme}://#{opts.server}#{opts.prefix}/#{identifier}",
+          type: "ImageServer3",
+          protocol: "#{opts.scheme}://#{opts.server}/#{opts.prefix}",
+          width: Image.width(file),
+          height: Image.height(file),
+          profile: "level0",
+          maxHeight: opts.max_height,
+          maxWidth: opts.max_width,
+          maxArea: opts.max_area
+        }
+        |> Jason.encode!()
+      )
+    else
+      {:file_exists, false} ->
+        send_error(
+          conn,
+          404,
           %{
-            "@context": "http://iiif.io/api/image/3/context.json",
-            id: "#{opts.scheme}://#{opts.server}#{opts.prefix}/#{identifier}",
-            type: "ImageServer3",
-            protocol: "#{opts.scheme}://#{opts.server}/#{opts.prefix}",
-            width: Image.width(file),
-            height: Image.height(file),
-            profile: "level0",
-            maxHeight: opts.max_height,
-            maxWidth: opts.max_width,
-            maxArea: opts.max_area
-          }
-          |> Jason.encode!()
+            description: "Could not find file matching '#{identifier}'."
+          },
+          status_callbacks
         )
 
-      {:error, _msg} ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> send_resp(
-          404,
-          Jason.encode!(%{
-            description: "Could not find file matching '#{identifier}'."
-          })
+      {:file_opened, _} ->
+        send_error(
+          conn,
+          500,
+          %{
+            description: "Could not open image file matching '#{identifier}'."
+          },
+          status_callbacks
         )
     end
   end
@@ -99,29 +106,16 @@ defmodule IIIFImagePlug.V3 do
         %Plug.Conn{
           path_info: [identifier, region, size, rotation, quality_and_format]
         } = conn,
-        %Opts{identifier_to_path_callback: path_callback} = opts
+        %Opts{identifier_to_path_callback: path_callback, status_callbacks: status_callbacks} =
+          opts
       ) do
     path = path_callback.(identifier)
 
-    with {
-           :file_opened,
-           {:ok, file}
-         } <- {
-           :file_opened,
-           Image.new_from_file(path)
-         },
-         {
-           :quality_and_format_parsed,
-           %{quality: quality, format: format}
-         } <- {
-           :quality_and_format_parsed,
-           parse_quality_and_format(quality_and_format)
-         } do
-      file
-      |> Region.apply(URI.decode(region))
-      |> Size.apply(URI.decode(size), opts)
-      |> Rotation.apply(rotation)
-      |> Quality.apply(quality)
+    with {:file_exists, true} <- {:file_exists, File.exists?(path)},
+         {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},
+         {:quality_and_format_parsed, %{quality: quality, format: format}} <-
+           {:quality_and_format_parsed, parse_quality_and_format(quality_and_format)} do
+      Transformer.start(file, region, size, rotation, quality, opts)
       |> case do
         %Image{} = transformed ->
           stream = Image.write_to_stream(transformed, format)
@@ -136,46 +130,52 @@ defmodule IIIFImagePlug.V3 do
           end)
 
         {:error, msg} ->
-          conn
-          |> put_resp_content_type("application/json")
-          |> send_resp(400, Jason.encode!(%{error: msg}))
+          send_error(
+            conn,
+            400,
+            %{error: msg},
+            status_callbacks
+          )
       end
     else
-      {:file_opened, _} ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> send_resp(
+      {:file_exists, false} ->
+        send_error(
+          conn,
           404,
-          Jason.encode!(%{
+          %{
             description: "Could not find file matching '#{identifier}'."
-          })
+          },
+          status_callbacks
+        )
+
+      {:file_opened, _} ->
+        send_error(
+          conn,
+          500,
+          %{
+            description: "Could not open image file matching '#{identifier}'."
+          },
+          status_callbacks
         )
 
       {:quality_and_format_parsed, _} ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> send_resp(
+        send_error(
+          conn,
           400,
-          Jason.encode!(%{
+          %{
             description:
               "Could not find parse valid quality and format from '#{quality_and_format}'."
-          })
+          },
+          status_callbacks
         )
     end
   end
 
   def call(
         conn,
-        _opts
+        %Opts{status_callbacks: callbacks}
       ) do
-    conn
-    |> put_resp_content_type("application/json")
-    |> send_resp(
-      400,
-      Jason.encode!(%{
-        description: "Invalid request scheme."
-      })
-    )
+    send_error(conn, 400, %{description: "Invalid request scheme."}, callbacks)
   end
 
   defp parse_quality_and_format(quality_and_format) when is_binary(quality_and_format) do
@@ -191,6 +191,20 @@ defmodule IIIFImagePlug.V3 do
 
       _ ->
         :error
+    end
+  end
+
+  def send_error(conn, code, info, status_callbacks)
+      when is_map(info) and is_map(status_callbacks) do
+    if status_callbacks[code] do
+      status_callbacks[code].(conn, info)
+    else
+      conn
+      |> put_resp_content_type("application/json")
+      |> send_resp(
+        code,
+        Jason.encode!(info)
+      )
     end
   end
 end

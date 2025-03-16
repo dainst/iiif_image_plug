@@ -21,3 +21,6 @@ iiif_plug-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+image_store/*
+!image_store/README.md

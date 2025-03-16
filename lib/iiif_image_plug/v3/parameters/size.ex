@@ -1,4 +1,4 @@
-defmodule IIIFImagePlug.V3.Parameters.Size do
+defmodule IIIFImagePlug.V3.Transformer.Size do
   alias Vix.Vips.{
     Operation,
     Image
@@ -6,7 +6,7 @@ defmodule IIIFImagePlug.V3.Parameters.Size do
 
   alias IIIFImagePlug.V3.Opts
 
-  def apply(%Image{} = image, "max", %Opts{} = plug_opts) do
+  def parse_and_apply(%Image{} = image, "max", %Opts{} = plug_opts) do
     image_width = Image.width(image)
     image_height = Image.height(image)
 
@@ -38,7 +38,7 @@ defmodule IIIFImagePlug.V3.Parameters.Size do
     end
   end
 
-  def apply(%Image{} = image, "^max", plug_opts) do
+  def parse_and_apply(%Image{} = image, "^max", plug_opts) do
     image_width = Image.width(image)
     image_height = Image.height(image)
 
@@ -55,7 +55,8 @@ defmodule IIIFImagePlug.V3.Parameters.Size do
     Operation.resize!(image, factor)
   end
 
-  def apply(%Image{} = image, size_parameter, plug_opts) when is_binary(size_parameter) do
+  def parse_and_apply(%Image{} = image, size_parameter, plug_opts)
+      when is_binary(size_parameter) do
     upscale? = String.starts_with?(size_parameter, "^")
     size_parameter = String.replace_leading(size_parameter, "^", "")
 
@@ -100,13 +101,13 @@ defmodule IIIFImagePlug.V3.Parameters.Size do
     else
       w_h = String.split(size_parameter, ",")
 
-      apply_w_h_parameters(image, w_h, upscale?, maintain_ratio?, plug_opts)
+      apply_w_h_Transformer(image, w_h, upscale?, maintain_ratio?, plug_opts)
     end
   end
 
-  def apply(error, _, _), do: error
+  def parse_and_apply(error, _, _), do: error
 
-  defp apply_w_h_parameters(
+  defp apply_w_h_Transformer(
          image,
          [w_parameter, ""],
          upscale?,
@@ -151,7 +152,7 @@ defmodule IIIFImagePlug.V3.Parameters.Size do
     end
   end
 
-  defp apply_w_h_parameters(
+  defp apply_w_h_Transformer(
          image,
          ["", h_parameter],
          upscale?,
@@ -195,7 +196,7 @@ defmodule IIIFImagePlug.V3.Parameters.Size do
     end
   end
 
-  defp apply_w_h_parameters(
+  defp apply_w_h_Transformer(
          image,
          [w_parameter, h_parameter],
          upscale?,
@@ -263,7 +264,7 @@ defmodule IIIFImagePlug.V3.Parameters.Size do
     end
   end
 
-  defp apply_w_h_parameters(_image, _w_h_parameter, _upscale?, _maintain_ratio?, _plug_opts) do
+  defp apply_w_h_Transformer(_image, _w_h_parameter, _upscale?, _maintain_ratio?, _plug_opts) do
     {:error, :invalid_size}
   end
 end

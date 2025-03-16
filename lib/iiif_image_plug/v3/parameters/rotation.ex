@@ -1,15 +1,15 @@
-defmodule IIIFImagePlug.V3.Parameters.Rotation do
+defmodule IIIFImagePlug.V3.Transformer.Rotation do
   alias Vix.Vips.{
     Operation,
     Image
   }
 
-  def apply(%Image{} = image, "0") do
+  def parse_and_apply(%Image{} = image, "0") do
     # If there is no rotation requested, this function is avoiding any further string parsing.
     image
   end
 
-  def apply(%Image{} = image, rotate_params) when is_binary(rotate_params) do
+  def parse_and_apply(%Image{} = image, rotate_params) when is_binary(rotate_params) do
     mirror_vertically? = String.starts_with?(rotate_params, "!")
 
     rotate_params
@@ -31,5 +31,5 @@ defmodule IIIFImagePlug.V3.Parameters.Rotation do
     end
   end
 
-  def apply(error, _), do: error
+  def parse_and_apply(error, _), do: error
 end
