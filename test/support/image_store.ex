@@ -1,6 +1,6 @@
 defmodule ImageStore do
   def identifier_to_path(identifier) do
-    "image_store/#{identifier}"
+    "test/images/#{identifier}"
   end
 
   def handle_404(conn, plug_info) do
