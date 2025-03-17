@@ -21,7 +21,8 @@ defmodule IIIFImagePlug.V3 do
       :max_height,
       :max_area,
       :identifier_to_path_callback,
-      :status_callbacks
+      :status_callbacks,
+      :identifier_to_rights_callback
     ]
     defstruct [
       :scheme,
@@ -31,7 +32,8 @@ defmodule IIIFImagePlug.V3 do
       :max_height,
       :max_area,
       :identifier_to_path_callback,
-      :status_callbacks
+      :status_callbacks,
+      :identifier_to_rights_callback
     ]
   end
 
@@ -41,44 +43,87 @@ defmodule IIIFImagePlug.V3 do
     %Opts{
       scheme: opts[:scheme] || :http,
       server: opts[:server] || "localhost",
-      prefix: opts[:prefix] || "/",
+      prefix:
+        if opts[:prefix] do
+          String.trim(opts[:prefix], "/")
+        else
+          ""
+        end,
       max_width: opts[:max_width] || default_dimension,
       max_height: opts[:max_height] || default_dimension,
       max_area: opts[:max_area] || default_dimension * default_dimension,
       identifier_to_path_callback:
-        opts.identifier_to_path_callback ||
+        opts[:identifier_to_path_callback] ||
           raise("Missing callback used to construct file path from identifier."),
+      identifier_to_rights_callback: opts[:identifier_to_rights_callback],
       status_callbacks: opts[:status_callbacks] || %{}
     }
   end
 
   def call(
         %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
-        %Opts{identifier_to_path_callback: path_callback, status_callbacks: status_callbacks} =
+        %Opts{
+          identifier_to_path_callback: path_callback,
+          status_callbacks: status_callbacks,
+          identifier_to_rights_callback: rights_callback
+        } =
           opts
       ) do
     path = path_callback.(identifier)
 
     with {:file_exists, true} <- {:file_exists, File.exists?(path)},
-         {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)} do
+         {:file_opened, {:ok, file}} <-
+           {:file_opened, Image.new_from_file(path)} do
+      info = %{
+        "@context": "http://iiif.io/api/image/3/context.json",
+        id: "#{opts.scheme}://#{opts.server}#{opts.prefix}/#{identifier}",
+        type: "ImageServer3",
+        protocol: "http://iiif.io/api/image",
+        width: Image.width(file),
+        height: Image.height(file),
+        profile: "level2",
+        maxHeight: opts.max_height,
+        maxWidth: opts.max_width,
+        maxArea: opts.max_area,
+        extra_features: [
+          "mirroring",
+          "regionByPct",
+          "regionByPx",
+          "regionSquare",
+          "rotationArbitrary",
+          "sizeByConfinedWh",
+          "sizeByH",
+          "sizeByPct",
+          "sizeByW",
+          "sizeByWh",
+          "sizeUpscaling"
+        ],
+        extraFormats: ["jpg", "tif", "png"],
+        preferredFormats: "webp"
+      }
+
+      rights_statement =
+        if rights_callback do
+          rights_callback.(identifier)
+          |> case do
+            {:ok, statement} when is_binary(statement) ->
+              statement
+
+            _ ->
+              nil
+          end
+        end
+
+      info =
+        if rights_statement do
+          Map.put(info, :rights, rights_statement)
+        else
+          info
+        end
+
       conn
       |> put_resp_content_type("application/ld+json")
-      |> send_resp(
-        200,
-        %{
-          "@context": "http://iiif.io/api/image/3/context.json",
-          id: "#{opts.scheme}://#{opts.server}#{opts.prefix}/#{identifier}",
-          type: "ImageServer3",
-          protocol: "#{opts.scheme}://#{opts.server}/#{opts.prefix}",
-          width: Image.width(file),
-          height: Image.height(file),
-          profile: "level0",
-          maxHeight: opts.max_height,
-          maxWidth: opts.max_width,
-          maxArea: opts.max_area
-        }
-        |> Jason.encode!()
-      )
+      |> send_resp(200, Jason.encode!(info))
     else
       {:file_exists, false} ->
         send_error(

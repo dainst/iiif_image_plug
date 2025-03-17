@@ -21,4 +21,8 @@ defmodule ImageStore do
       response_body
     )
   end
+
+  def get_rights(_identifier) do
+    {:ok, "https://creativecommons.org/publicdomain/zero/1.0/"}
+  end
 end
