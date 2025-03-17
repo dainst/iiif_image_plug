@@ -17,9 +17,11 @@ defmodule IIIFImagePlug.V3.Transformer.Quality do
   end
 
   def parse_and_apply(%Image{} = image, :bitonal) do
+    avg = Operation.avg!(image)
+
     image
     |> Operation.colourspace!(:VIPS_INTERPRETATION_B_W)
-    |> Operation.relational_const!(:VIPS_OPERATION_RELATIONAL_MOREEQ, [128.0])
+    |> Operation.relational_const!(:VIPS_OPERATION_RELATIONAL_MOREEQ, [avg])
   end
 
   def parse_and_apply(error, _), do: error
