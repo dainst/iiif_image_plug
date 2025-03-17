@@ -119,6 +119,5 @@ defmodule IIIFImagePlug.V3.Transformer.Region do
       _ ->
         {:error, :invalid_region}
     end
-    |> dbg()
   end
 end
