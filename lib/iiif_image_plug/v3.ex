@@ -57,7 +57,7 @@ defmodule IIIFImagePlug.V3 do
   @default_extra_formats [:png, :tif]
   @default_dimension 10000
 
-  def init(opts) do
+  def init(opts) when is_map(opts) do
     %Settings{
       scheme: opts[:scheme] || :http,
       server: opts[:server] || "localhost",
