@@ -180,16 +180,11 @@ defmodule IIIFImagePlug.V3 do
       apply_operations(file, region, size, rotation, quality, settings)
       |> case do
         %Image{} = transformed ->
-          stream = Image.write_to_stream(transformed, ".#{format}")
-
-          conn = send_chunked(conn, 200)
-
-          Enum.reduce_while(stream, conn, fn data, conn ->
-            case chunk(conn, data) do
-              {:ok, conn} -> {:cont, conn}
-              {:error, :closed} -> {:halt, conn}
-            end
-          end)
+          if format == "tif" do
+            send_buffered(conn, transformed, format)
+          else
+            send_stream(conn, transformed, format)
+          end
 
         {:error, msg} ->
           send_error(
@@ -267,7 +262,7 @@ defmodule IIIFImagePlug.V3 do
       [quality, format]
       when quality in ["default", "color", "gray", "bitonal"] and
              is_binary(format) ->
-        if format in Enum.map(preferred_formats ++ extra_formats, &Atom.to_string/1) do
+        if format in Stream.map(preferred_formats ++ extra_formats, &Atom.to_string/1) do
           %{
             quality: String.to_existing_atom(quality),
             format: format
@@ -277,6 +272,24 @@ defmodule IIIFImagePlug.V3 do
       _ ->
         :error
     end
+  end
+
+  defp send_buffered(conn, %Image{} = image, format) do
+    {:ok, buffer} = Image.write_to_buffer(image, ".#{format}")
+    send_resp(conn, 200, buffer)
+  end
+
+  def send_stream(conn, %Image{} = image, format) do
+    stream = Image.write_to_stream(image, ".#{format}")
+
+    conn = send_chunked(conn, 200)
+
+    Enum.reduce_while(stream, conn, fn data, conn ->
+      case chunk(conn, data) do
+        {:ok, conn} -> {:cont, conn}
+        {:error, :closed} -> {:halt, conn}
+      end
+    end)
   end
 
   def send_error(conn, code, info, status_callbacks)
