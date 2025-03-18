@@ -21,7 +21,8 @@ defmodule IIIFImagePlug.V3 do
   defmodule Settings do
     @enforce_keys [
       :scheme,
-      :server,
+      :host,
+      :port,
       :prefix,
       :max_width,
       :max_height,
@@ -37,7 +38,8 @@ defmodule IIIFImagePlug.V3 do
     ]
     defstruct [
       :scheme,
-      :server,
+      :host,
+      :port,
       :prefix,
       :max_width,
       :max_height,
@@ -60,7 +62,8 @@ defmodule IIIFImagePlug.V3 do
   def init(opts) when is_map(opts) do
     %Settings{
       scheme: opts[:scheme] || :http,
-      server: opts[:server] || "localhost",
+      host: opts[:host] || "localhost",
+      port: opts[:port],
       prefix:
         if opts[:prefix] do
           String.trim(opts[:prefix], "/")
@@ -103,7 +106,12 @@ defmodule IIIFImagePlug.V3 do
       info =
         %{
           "@context": "http://iiif.io/api/image/3/context.json",
-          id: "#{settings.scheme}://#{settings.server}#{settings.prefix}/#{identifier}",
+          id:
+            "#{settings.scheme}://#{settings.host}#{if settings.port do
+              ":#{settings.port}"
+            else
+              ""
+            end}/#{settings.prefix}/#{identifier}",
           type: "ImageServer3",
           protocol: "http://iiif.io/api/image",
           width: Image.width(file),
@@ -283,7 +291,12 @@ defmodule IIIFImagePlug.V3 do
         conn,
         %Settings{status_callbacks: callbacks}
       ) do
-    send_error(conn, 400, %{description: "Invalid request scheme."}, callbacks)
+    send_error(
+      conn,
+      400,
+      %{description: "Invalid request scheme.", path_info: conn.path_info},
+      callbacks
+    )
   end
 
   defp apply_operations(
