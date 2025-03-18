@@ -342,7 +342,7 @@ defmodule IIIFImagePlug.V3 do
     send_resp(conn, 200, buffer)
   end
 
-  def send_stream(conn, %Image{} = image, format) do
+  defp send_stream(conn, %Image{} = image, format) do
     stream = Image.write_to_stream(image, ".#{format}")
 
     conn = send_chunked(conn, 200)
@@ -355,8 +355,8 @@ defmodule IIIFImagePlug.V3 do
     end)
   end
 
-  def send_error(conn, code, info, status_callbacks)
-      when is_map(info) and is_map(status_callbacks) do
+  defp send_error(conn, code, info, status_callbacks)
+       when is_map(info) and is_map(status_callbacks) do
     if status_callbacks[code] do
       status_callbacks[code].(conn, info)
     else
