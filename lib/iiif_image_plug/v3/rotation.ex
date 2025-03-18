@@ -24,14 +24,12 @@ defmodule IIIFImagePlug.V3.Rotation do
     |> Float.parse()
     |> case do
       {degrees, ""} when degrees >= 0 and degrees <= 360 ->
-        image =
-          if mirror_vertically? do
-            Operation.flip!(image, :VIPS_DIRECTION_HORIZONTAL)
-          else
-            image
-          end
-
-        Operation.rotate!(image, degrees)
+        if mirror_vertically? do
+          Operation.flip!(image, :VIPS_DIRECTION_HORIZONTAL)
+        else
+          image
+        end
+        |> Operation.rotate!(degrees)
 
       _ ->
         {:error, :invalid_rotation}
