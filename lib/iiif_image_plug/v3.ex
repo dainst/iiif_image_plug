@@ -3,7 +3,13 @@ defmodule IIIFImagePlug.V3 do
 
   import Plug.Conn
 
-  alias IIIFImagePlug.V3.Transformer
+  alias IIIFImagePlug.V3.{
+    Quality,
+    Region,
+    Rotation,
+    Size
+  }
+
   alias Vix.Vips.Image
 
   require Logger
@@ -12,7 +18,7 @@ defmodule IIIFImagePlug.V3 do
   Documentation for `IIIFImagePlug`.
   """
 
-  defmodule Opts do
+  defmodule Settings do
     @enforce_keys [
       :scheme,
       :server,
@@ -40,7 +46,7 @@ defmodule IIIFImagePlug.V3 do
   def init(opts) do
     default_dimension = 10000
 
-    %Opts{
+    %Settings{
       scheme: opts[:scheme] || :http,
       server: opts[:server] || "localhost",
       prefix:
@@ -62,12 +68,12 @@ defmodule IIIFImagePlug.V3 do
 
   def call(
         %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
-        %Opts{
+        %Settings{
           identifier_to_path_callback: path_callback,
           status_callbacks: status_callbacks,
           identifier_to_rights_callback: rights_callback
         } =
-          opts
+          settings
       ) do
     path = path_callback.(identifier)
 
@@ -76,15 +82,15 @@ defmodule IIIFImagePlug.V3 do
            {:file_opened, Image.new_from_file(path)} do
       info = %{
         "@context": "http://iiif.io/api/image/3/context.json",
-        id: "#{opts.scheme}://#{opts.server}#{opts.prefix}/#{identifier}",
+        id: "#{settings.scheme}://#{settings.server}#{settings.prefix}/#{identifier}",
         type: "ImageServer3",
         protocol: "http://iiif.io/api/image",
         width: Image.width(file),
         height: Image.height(file),
         profile: "level2",
-        maxHeight: opts.max_height,
-        maxWidth: opts.max_width,
-        maxArea: opts.max_area,
+        maxHeight: settings.max_height,
+        maxWidth: settings.max_width,
+        maxArea: settings.max_area,
         extra_features: [
           "mirroring",
           "regionByPct",
@@ -151,8 +157,11 @@ defmodule IIIFImagePlug.V3 do
         %Plug.Conn{
           path_info: [identifier, region, size, rotation, quality_and_format]
         } = conn,
-        %Opts{identifier_to_path_callback: path_callback, status_callbacks: status_callbacks} =
-          opts
+        %Settings{
+          identifier_to_path_callback: path_callback,
+          status_callbacks: status_callbacks
+        } =
+          settings
       ) do
     path = path_callback.(identifier)
 
@@ -160,7 +169,7 @@ defmodule IIIFImagePlug.V3 do
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},
          {:quality_and_format_parsed, %{quality: quality, format: format}} <-
            {:quality_and_format_parsed, parse_quality_and_format(quality_and_format)} do
-      Transformer.start(file, region, size, rotation, quality, opts)
+      apply_operations(file, region, size, rotation, quality, settings)
       |> case do
         %Image{} = transformed ->
           stream = Image.write_to_stream(transformed, format)
@@ -218,9 +227,26 @@ defmodule IIIFImagePlug.V3 do
 
   def call(
         conn,
-        %Opts{status_callbacks: callbacks}
+        %Settings{status_callbacks: callbacks}
       ) do
     send_error(conn, 400, %{description: "Invalid request scheme."}, callbacks)
+  end
+
+  defp apply_operations(
+         %Image{} = input_file,
+         region,
+         size,
+         rotation,
+         quality,
+         %Settings{} = opts
+       )
+       when is_binary(region) and is_binary(size) and is_binary(rotation) and
+              quality in [:default, :color, :gray, :bitonal] do
+    input_file
+    |> Region.parse_and_apply(URI.decode(region))
+    |> Size.parse_and_apply(URI.decode(size), opts)
+    |> Rotation.parse_and_apply(rotation)
+    |> Quality.parse_and_apply(quality)
   end
 
   defp parse_quality_and_format(quality_and_format) when is_binary(quality_and_format) do

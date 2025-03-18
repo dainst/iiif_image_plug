@@ -1,4 +1,4 @@
-defmodule ImageStore do
+defmodule DevCallbacks do
   def identifier_to_path(identifier) do
     "test/images/#{identifier}"
   end

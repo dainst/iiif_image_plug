@@ -17,7 +17,7 @@ defmodule IIIFImagePlug.MixProject do
     [
       mod:
         if Mix.env() in [:dev, :test] do
-          {IIIFImagePlug.Application, []}
+          {DevServer, []}
         else
           []
         end,

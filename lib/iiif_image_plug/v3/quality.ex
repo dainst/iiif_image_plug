@@ -1,11 +1,11 @@
-defmodule IIIFImagePlug.V3.Transformer.Quality do
+defmodule IIIFImagePlug.V3.Quality do
   alias Vix.Vips.{
     Operation,
     Image
   }
 
   def parse_and_apply(%Image{} = image, :default) do
-    Operation.colourspace!(image, :VIPS_INTERPRETATION_sRGB)
+    image
   end
 
   def parse_and_apply(%Image{} = image, :color) do

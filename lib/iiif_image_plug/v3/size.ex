@@ -1,12 +1,12 @@
-defmodule IIIFImagePlug.V3.Transformer.Size do
+defmodule IIIFImagePlug.V3.Size do
   alias Vix.Vips.{
     Operation,
     Image
   }
 
-  alias IIIFImagePlug.V3.Opts
+  alias IIIFImagePlug.V3.Settings
 
-  def parse_and_apply(%Image{} = image, "max", %Opts{} = plug_opts) do
+  def parse_and_apply(%Image{} = image, "max", %Settings{} = settings) do
     image_width = Image.width(image)
     image_height = Image.height(image)
 
@@ -21,9 +21,9 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
     factor =
       Enum.min(
         [
-          :math.sqrt(plug_opts.max_area / image_area),
-          plug_opts.max_width / image_width,
-          plug_opts.max_height / image_height
+          :math.sqrt(settings.max_area / image_area),
+          settings.max_width / image_width,
+          settings.max_height / image_height
         ]
         |> Enum.filter(fn val -> val < 1 end),
         fn ->
@@ -38,7 +38,7 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
     end
   end
 
-  def parse_and_apply(%Image{} = image, "^max", plug_opts) do
+  def parse_and_apply(%Image{} = image, "^max", settings) do
     image_width = Image.width(image)
     image_height = Image.height(image)
 
@@ -47,15 +47,15 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
     # Select the smallest factor that would scale the image to one of the plug's maxima.
     factor =
       Enum.min([
-        :math.sqrt(plug_opts.max_area / image_area),
-        plug_opts.max_width / image_width,
-        plug_opts.max_height / image_height
+        :math.sqrt(settings.max_area / image_area),
+        settings.max_width / image_width,
+        settings.max_height / image_height
       ])
 
     Operation.resize!(image, factor)
   end
 
-  def parse_and_apply(%Image{} = image, size_parameter, plug_opts)
+  def parse_and_apply(%Image{} = image, size_parameter, settings)
       when is_binary(size_parameter) do
     upscale? = String.starts_with?(size_parameter, "^")
     size_parameter = String.replace_leading(size_parameter, "^", "")
@@ -77,9 +77,9 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
 
           valid_maximum_factor =
             Enum.min([
-              :math.sqrt(plug_opts.max_area / image_area),
-              plug_opts.max_width / image_width,
-              plug_opts.max_height / image_height
+              :math.sqrt(settings.max_area / image_area),
+              settings.max_width / image_width,
+              settings.max_height / image_height
             ])
 
           factor =
@@ -101,7 +101,7 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
     else
       w_h = String.split(size_parameter, ",")
 
-      apply_w_h_Transformer(image, w_h, upscale?, maintain_ratio?, plug_opts)
+      apply_w_h_Transformer(image, w_h, upscale?, maintain_ratio?, settings)
     end
   end
 
@@ -112,7 +112,7 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
          [w_parameter, ""],
          upscale?,
          _maintain_ratio?,
-         %Opts{} = plug_opts
+         %Settings{} = settings
        ) do
     Integer.parse(w_parameter)
     |> case do
@@ -128,9 +128,9 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
 
             valid_maximum_factor =
               Enum.min([
-                :math.sqrt(plug_opts.max_area / image_area),
-                plug_opts.max_width / image_width,
-                plug_opts.max_height / image_height
+                :math.sqrt(settings.max_area / image_area),
+                settings.max_width / image_width,
+                settings.max_height / image_height
               ])
 
             factor =
@@ -157,7 +157,7 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
          ["", h_parameter],
          upscale?,
          _maintain_ratio?,
-         %Opts{} = plug_opts
+         %Settings{} = settings
        ) do
     Integer.parse(h_parameter)
     |> case do
@@ -172,9 +172,9 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
 
             valid_maximum_factor =
               Enum.min([
-                :math.sqrt(plug_opts.max_area / image_area),
-                plug_opts.max_width / image_width,
-                plug_opts.max_height / image_height
+                :math.sqrt(settings.max_area / image_area),
+                settings.max_width / image_width,
+                settings.max_height / image_height
               ])
 
             factor =
@@ -201,7 +201,7 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
          [w_parameter, h_parameter],
          upscale?,
          maintain_ratio?,
-         %Opts{} = plug_opts
+         %Settings{} = settings
        ) do
     {Integer.parse(w_parameter), Integer.parse(h_parameter)}
     |> case do
@@ -218,8 +218,8 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
             valid_maximum_factor =
               Enum.min([
                 :math.sqrt(image_width * image_height),
-                plug_opts.max_width / image_width,
-                plug_opts.max_height / image_height
+                settings.max_width / image_width,
+                settings.max_height / image_height
               ])
 
             factor =
@@ -233,8 +233,8 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
             requested_width_factor = w / image_width
             requested_height_factor = h / image_height
 
-            max_width_factor = plug_opts.max_width / image_width
-            max_height_factor = plug_opts.max_height / image_height
+            max_width_factor = settings.max_width / image_width
+            max_height_factor = settings.max_height / image_height
 
             width_factor =
               if requested_width_factor < max_width_factor,
@@ -264,7 +264,7 @@ defmodule IIIFImagePlug.V3.Transformer.Size do
     end
   end
 
-  defp apply_w_h_Transformer(_image, _w_h_parameter, _upscale?, _maintain_ratio?, _plug_opts) do
+  defp apply_w_h_Transformer(_image, _w_h_parameter, _upscale?, _maintain_ratio?, _settings) do
     {:error, :invalid_size}
   end
 end

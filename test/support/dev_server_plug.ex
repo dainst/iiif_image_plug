@@ -1,4 +1,4 @@
-defmodule Server do
+defmodule DevServerPlug do
   use Plug.Router
   use Plug.Debugger
 
@@ -11,10 +11,10 @@ defmodule Server do
       scheme: :http,
       server: "localhost",
       prefix: "/",
-      identifier_to_path_callback: &ImageStore.identifier_to_path/1,
-      identifier_to_rights_callback: &ImageStore.get_rights/1,
+      identifier_to_path_callback: &DevCallbacks.identifier_to_path/1,
+      identifier_to_rights_callback: &DevCallbacks.get_rights/1,
       status_callbacks: %{
-        404 => &ImageStore.handle_404/2
+        404 => &DevCallbacks.handle_404/2
       }
     }
   )

@@ -1,4 +1,4 @@
-defmodule IIIFImagePlug.V3.Transformer.Rotation do
+defmodule IIIFImagePlug.V3.Rotation do
   alias Vix.Vips.{
     Operation,
     Image
