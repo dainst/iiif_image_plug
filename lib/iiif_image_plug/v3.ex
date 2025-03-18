@@ -26,6 +26,8 @@ defmodule IIIFImagePlug.V3 do
       :max_width,
       :max_height,
       :max_area,
+      :preferred_formats,
+      :extra_formats,
       :identifier_to_path_callback,
       :status_callbacks,
       :identifier_to_rights_callback
@@ -37,15 +39,19 @@ defmodule IIIFImagePlug.V3 do
       :max_width,
       :max_height,
       :max_area,
+      :preferred_formats,
+      :extra_formats,
       :identifier_to_path_callback,
       :status_callbacks,
       :identifier_to_rights_callback
     ]
   end
 
-  def init(opts) do
-    default_dimension = 10000
+  @default_preferred_format [:webp, :jpg]
+  @default_extra_formats [:png, :tif]
+  @default_dimension 10000
 
+  def init(opts) do
     %Settings{
       scheme: opts[:scheme] || :http,
       server: opts[:server] || "localhost",
@@ -55,9 +61,11 @@ defmodule IIIFImagePlug.V3 do
         else
           ""
         end,
-      max_width: opts[:max_width] || default_dimension,
-      max_height: opts[:max_height] || default_dimension,
-      max_area: opts[:max_area] || default_dimension * default_dimension,
+      max_width: opts[:max_width] || @default_dimension,
+      max_height: opts[:max_height] || @default_dimension,
+      max_area: opts[:max_area] || @default_dimension * @default_dimension,
+      preferred_formats: opts[:preferred_formats] || @default_preferred_format,
+      extra_formats: opts[:extra_formats] || @default_extra_formats,
       identifier_to_path_callback:
         opts[:identifier_to_path_callback] ||
           raise("Missing callback used to construct file path from identifier."),
@@ -104,8 +112,8 @@ defmodule IIIFImagePlug.V3 do
           "sizeByWh",
           "sizeUpscaling"
         ],
-        extraFormats: ["jpg", "tif", "png"],
-        preferredFormats: "webp"
+        preferredFormat: settings.preferred_formats,
+        extraFormats: settings.extra_formats
       }
 
       rights_statement =
@@ -168,11 +176,11 @@ defmodule IIIFImagePlug.V3 do
     with {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},
          {:quality_and_format_parsed, %{quality: quality, format: format}} <-
-           {:quality_and_format_parsed, parse_quality_and_format(quality_and_format)} do
+           {:quality_and_format_parsed, parse_quality_and_format(quality_and_format, settings)} do
       apply_operations(file, region, size, rotation, quality, settings)
       |> case do
         %Image{} = transformed ->
-          stream = Image.write_to_stream(transformed, format)
+          stream = Image.write_to_stream(transformed, ".#{format}")
 
           conn = send_chunked(conn, 200)
 
@@ -249,16 +257,22 @@ defmodule IIIFImagePlug.V3 do
     |> Quality.parse_and_apply(quality)
   end
 
-  defp parse_quality_and_format(quality_and_format) when is_binary(quality_and_format) do
+  defp parse_quality_and_format(quality_and_format, %Settings{
+         preferred_formats: preferred_formats,
+         extra_formats: extra_formats
+       })
+       when is_binary(quality_and_format) do
     String.split(quality_and_format, ".")
     |> case do
       [quality, format]
       when quality in ["default", "color", "gray", "bitonal"] and
-             format in ["jpg", "tif", "png", "webp"] ->
-        %{
-          quality: String.to_existing_atom(quality),
-          format: ".#{format}"
-        }
+             is_binary(format) ->
+        if format in Enum.map(preferred_formats ++ extra_formats, &Atom.to_string/1) do
+          %{
+            quality: String.to_existing_atom(quality),
+            format: format
+          }
+        end
 
       _ ->
         :error
