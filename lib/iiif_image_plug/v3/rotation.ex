@@ -10,6 +10,13 @@ defmodule IIIFImagePlug.V3.Rotation do
   end
 
   def parse_and_apply(%Image{} = image, rotate_params) when is_binary(rotate_params) do
+    image =
+      if Image.has_alpha?(image) do
+        image
+      else
+        Operation.bandjoin_const!(image, [255.0])
+      end
+
     mirror_vertically? = String.starts_with?(rotate_params, "!")
 
     rotate_params
