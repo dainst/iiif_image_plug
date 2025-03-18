@@ -29,8 +29,11 @@ defmodule IIIFImagePlug.V3 do
       :preferred_formats,
       :extra_formats,
       :identifier_to_path_callback,
-      :status_callbacks,
-      :identifier_to_rights_callback
+      :identifier_to_rights_callback,
+      :identifier_to_part_of_callback,
+      :identifier_to_see_also_callback,
+      :identifier_to_service_callback,
+      :status_callbacks
     ]
     defstruct [
       :scheme,
@@ -42,8 +45,11 @@ defmodule IIIFImagePlug.V3 do
       :preferred_formats,
       :extra_formats,
       :identifier_to_path_callback,
-      :status_callbacks,
-      :identifier_to_rights_callback
+      :identifier_to_rights_callback,
+      :identifier_to_part_of_callback,
+      :identifier_to_see_also_callback,
+      :identifier_to_service_callback,
+      :status_callbacks
     ]
   end
 
@@ -70,6 +76,9 @@ defmodule IIIFImagePlug.V3 do
         opts[:identifier_to_path_callback] ||
           raise("Missing callback used to construct file path from identifier."),
       identifier_to_rights_callback: opts[:identifier_to_rights_callback],
+      identifier_to_part_of_callback: opts[:identifier_to_part_of_callback],
+      identifier_to_see_also_callback: opts[:identifier_to_see_also_callback],
+      identifier_to_service_callback: opts[:identifier_to_service_callback],
       status_callbacks: opts[:status_callbacks] || %{}
     }
   end
@@ -79,7 +88,10 @@ defmodule IIIFImagePlug.V3 do
         %Settings{
           identifier_to_path_callback: path_callback,
           status_callbacks: status_callbacks,
-          identifier_to_rights_callback: rights_callback
+          identifier_to_rights_callback: rights_callback,
+          identifier_to_part_of_callback: part_of_callback,
+          identifier_to_see_also_callback: see_also_callback,
+          identifier_to_service_callback: service_callback
         } =
           settings
       ) do
@@ -88,49 +100,88 @@ defmodule IIIFImagePlug.V3 do
     with {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <-
            {:file_opened, Image.new_from_file(path)} do
-      info = %{
-        "@context": "http://iiif.io/api/image/3/context.json",
-        id: "#{settings.scheme}://#{settings.server}#{settings.prefix}/#{identifier}",
-        type: "ImageServer3",
-        protocol: "http://iiif.io/api/image",
-        width: Image.width(file),
-        height: Image.height(file),
-        profile: "level2",
-        maxHeight: settings.max_height,
-        maxWidth: settings.max_width,
-        maxArea: settings.max_area,
-        extra_features: [
-          "mirroring",
-          "regionByPct",
-          "regionByPx",
-          "regionSquare",
-          "rotationArbitrary",
-          "sizeByConfinedWh",
-          "sizeByH",
-          "sizeByPct",
-          "sizeByW",
-          "sizeByWh",
-          "sizeUpscaling"
-        ],
-        preferredFormat: settings.preferred_formats,
-        extraFormats: settings.extra_formats
-      }
+      info =
+        %{
+          "@context": "http://iiif.io/api/image/3/context.json",
+          id: "#{settings.scheme}://#{settings.server}#{settings.prefix}/#{identifier}",
+          type: "ImageServer3",
+          protocol: "http://iiif.io/api/image",
+          width: Image.width(file),
+          height: Image.height(file),
+          profile: "level2",
+          maxHeight: settings.max_height,
+          maxWidth: settings.max_width,
+          maxArea: settings.max_area,
+          extra_features: [
+            "mirroring",
+            "regionByPct",
+            "regionByPx",
+            "regionSquare",
+            "rotationArbitrary",
+            "sizeByConfinedWh",
+            "sizeByH",
+            "sizeByPct",
+            "sizeByW",
+            "sizeByWh",
+            "sizeUpscaling"
+          ],
+          preferredFormat: settings.preferred_formats,
+          extraFormats: settings.extra_formats,
+          extraQualities: [:color, :gray, :bitonal]
+        }
 
-      rights_statement =
+      info =
         if rights_callback do
           rights_callback.(identifier)
           |> case do
             {:ok, statement} when is_binary(statement) ->
-              statement
+              Map.put(info, :rights, statement)
 
             _ ->
-              nil
+              info
           end
+        else
+          info
         end
 
       info =
-        if rights_statement do
-          Map.put(info, :rights, rights_statement)
+        if see_also_callback do
+          see_also_callback.(identifier)
+          |> case do
+            {:ok, result} ->
+              Map.put(info, :seeAlso, result)
+
+            _ ->
+              info
+          end
+        else
+          info
+        end
+
+      info =
+        if part_of_callback do
+          part_of_callback.(identifier)
+          |> case do
+            {:ok, result} ->
+              Map.put(info, :partOf, result)
+
+            _ ->
+              info
+          end
+        else
+          info
+        end
+
+      info =
+        if service_callback do
+          service_callback.(identifier)
+          |> case do
+            {:ok, result} ->
+              Map.put(info, :service, result)
+
+            _ ->
+              info
+          end
         else
           info
         end
