@@ -245,11 +245,23 @@ defmodule IIIFImagePlug.V3 do
        )
        when is_binary(region) and is_binary(size) and is_binary(rotation) and
               quality in [:default, :color, :gray, :bitonal] do
-    input_file
-    |> Region.parse_and_apply(URI.decode(region))
-    |> Size.parse_and_apply(URI.decode(size), opts)
+    result =
+      input_file
+      |> Region.parse_and_apply(URI.decode(region))
+      |> Size.parse_and_apply(URI.decode(size), opts)
+
+    average =
+      case result do
+        %Image{} = image ->
+          Vix.Vips.Operation.avg!(image)
+
+        _ ->
+          nil
+      end
+
+    result
     |> Rotation.parse_and_apply(rotation)
-    |> Quality.parse_and_apply(quality)
+    |> Quality.parse_and_apply(quality, average)
   end
 
   defp parse_quality_and_format(quality_and_format, %Settings{
