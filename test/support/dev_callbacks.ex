@@ -15,7 +15,7 @@ defmodule DevCallbacks do
           File.read!(Application.app_dir(:iiif_image_plug, "priv/image_not_found.webp"))
       end
 
-    Plug.Conn.resp(
+    Plug.Conn.send_resp(
       conn,
       404,
       response_body

@@ -66,7 +66,7 @@ defmodule IIIFImagePlug.V3 do
       port: opts[:port],
       prefix:
         if opts[:prefix] do
-          String.trim(opts[:prefix], "/")
+          String.trim_trailing(opts[:prefix], "/")
         else
           ""
         end,
@@ -111,7 +111,7 @@ defmodule IIIFImagePlug.V3 do
               ":#{settings.port}"
             else
               ""
-            end}/#{settings.prefix}/#{identifier}",
+            end}#{settings.prefix}/#{identifier}",
           type: "ImageServer3",
           protocol: "http://iiif.io/api/image",
           width: Image.width(file),
@@ -203,18 +203,18 @@ defmodule IIIFImagePlug.V3 do
           conn,
           404,
           %{
-            description: "Could not find file matching '#{identifier}'."
+            description: "No file with identifier '#{identifier}'."
           },
           status_callbacks
         )
 
       {:file_opened, _} ->
+        Logger.error("File matching identifier '#{identifier}' could not be opened as an image.")
+
         send_error(
           conn,
           500,
-          %{
-            description: "Could not open image file matching '#{identifier}'."
-          },
+          %{},
           status_callbacks
         )
     end
