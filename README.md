@@ -5,7 +5,7 @@ An Elixir [plug](https://hexdocs.pm/plug/readme.html) implementing the _Internat
 - The goal of IIIF is to define a standardised REST API for serving high resolution images (art, photographes or archival material published by museums, universities and similar institutions).
 - There exist [several](https://iiif.io/get-started/iiif-viewers/) generic Javascript IIIF viewers that utilize this API to allow for optimzed viewing (dynamic and optimized loading of data based on zoom level/viewport).
 - WebGIS Javascript libraries like [leaflet](https://github.com/mejackreed/Leaflet-IIIF) or [OpenLayers](https://openlayers.org/en/latest/examples/iiif.html) support IIIF in one way or the other.
-- For the time beeing only (current) Image API 3.0 is implemented, check out the IIIF [documentation](https://iiif.io/api/image/3.0/) for the different capabilities.
+- For the time beeing only (the current) Image API 3.0 is implemented, check out the IIIF [documentation](https://iiif.io/api/image/3.0/) for its capabilities.
 - The image processing by the plug is handled by [libvips](https://www.libvips.org/) via [Vix](https://hex.pm/packages/vix).
 
 # Installation 
@@ -50,6 +50,24 @@ A GET request `/iiif/v3/sample_image.jpg/info.json` would then cause the plug to
 
 The other options above `:scheme`, `:host`, `:port` and `:prefix` are used to generate the image's `id` field in its `info.json` (see IIIF [docs](https://iiif.io/api/image/3.0/#51-image-information-request)).
 
+## Options
+
+The complete list of plug options:
+
+- `:scheme` (default: `:http`), the scheme used to create the `id` image information requests.
+- `:host` (default: `"localhost"`), the host used to create the `id` image information requests.
+- `:port` (default: `nil`), the port used to create the `id` image information requests.
+- `:prefix` (default: `""`), the path prefix used to create the `id` image information requests.
+- `:max_width` (default: `10000`), the maximum image width the plug will serve.
+- `:max_height` (default: `10000`), the maximum image height the plug will serve.
+- `:max_area` (default: `100000000`), the maximum image pixels the plug will serve (does not necessarily have to be a `max_width` * `max_height`).
+- `:preferred_formats` (default: `[:webp, :jpg]`), [preferred formats](https://iiif.io/api/image/3.0/#55-preferred-formats) to be used for your service.
+- `:extra_formats` (default: `[:png, :tif]`), [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your service can deliver.
+- `:identifier_to_path_callback` required, expects a callback function that returns a path (string) for a given IIIF identifier.
+- `:identifier_to_rights_callback` (optional), expects a callback function that returns a [rights](https://iiif.io/api/image/3.0/#56-rights) statement for a given IIIF identifier.
+- `:identifier_to_part_of_callback` (optional), expects a callback function that returns a list of [part of](https://iiif.io/api/image/3.0/#58-linking-properties) properties for a given identifier.
+- `:identifier_to_see_also_callback` (optional), expects a callback function that returns a list of [see also](https://iiif.io/api/image/3.0/#58-linking-properties) properties for a given identifier.
+- `:identifier_to_see_also_callback` (optional), expects a callback function that returns a list of [service](https://iiif.io/api/image/3.0/#58-linking-properties) properties for a given identifier.
 <!-- If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 by adding `iiif_image_plug` to your list of dependencies in `mix.exs`:
 
@@ -64,7 +82,7 @@ end
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at <https://hexdocs.pm/iiif_plug>. -->
-## Development
+# Development
 
 This repository comes with a minimalistic server, run the server with:
 
