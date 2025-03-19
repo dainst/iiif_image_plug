@@ -57,10 +57,10 @@ defmodule IIIFImagePlug.V3.Region do
 
         left_in_pixel = (image_width * (left / 100)) |> trunc()
         top_in_pixel = (image_height * (top / 100)) |> trunc()
-        width_in_pixel = (image_width * (left / 100)) |> trunc()
-        height_in_pixel = (image_height * (top / 100)) |> trunc()
+        width_in_pixel = (image_width * (width / 100)) |> trunc()
+        height_in_pixel = (image_height * (height / 100)) |> trunc()
 
-        __MODULE__.parse_and_apply(
+        parse_and_apply(
           image,
           "#{left_in_pixel},#{top_in_pixel},#{width_in_pixel},#{height_in_pixel}"
         )
