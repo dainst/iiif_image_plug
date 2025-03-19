@@ -211,9 +211,11 @@ defmodule IIIFImagePlug.V3.Size do
 
         cond do
           upscale? and maintain_ratio? ->
-            {dividend, divisor} = if w > h, do: {w, image_width}, else: {h, image_height}
-
-            requested_factor = dividend / divisor
+            valid_requested_factor =
+              Enum.min([
+                w / image_width,
+                h / image_height
+              ])
 
             valid_maximum_factor =
               Enum.min([
@@ -223,8 +225,8 @@ defmodule IIIFImagePlug.V3.Size do
               ])
 
             factor =
-              if requested_factor < valid_maximum_factor,
-                do: requested_factor,
+              if valid_requested_factor < valid_maximum_factor,
+                do: valid_requested_factor,
                 else: valid_maximum_factor
 
             Operation.resize!(image, factor)
