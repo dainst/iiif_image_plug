@@ -8,6 +8,13 @@ defmodule IIIFImagePlug.MixProject do
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      test_coverage: [
+        ignore_modules: [
+          DevCallbacks,
+          DevServer,
+          DevServerPlug
+        ]
+      ],
       deps: deps()
     ]
   end
