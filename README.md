@@ -48,7 +48,7 @@ The option `:identifier_to_path_callback` lets the plug map the IIIF [identifier
 
 A GET request `/iiif/v3/sample_image.jpg/info.json` would then cause the plug to look for an image file at `/mnt/my_app_images/sample_image.jpg` and return its metadata.
 
-The other options above `:scheme`, `:host`, `:port` and `:prefix` to generate the image's `id` field in its `info.json` (see IIIF [docs](https://iiif.io/api/image/3.0/#51-image-information-request)).
+The other options above `:scheme`, `:host`, `:port` and `:prefix` are used to generate the image's `id` field in its `info.json` (see IIIF [docs](https://iiif.io/api/image/3.0/#51-image-information-request)).
 
 <!-- If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 by adding `iiif_image_plug` to your list of dependencies in `mix.exs`:
