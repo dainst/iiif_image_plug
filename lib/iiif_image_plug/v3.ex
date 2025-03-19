@@ -259,18 +259,18 @@ defmodule IIIFImagePlug.V3 do
           conn,
           404,
           %{
-            description: "Could not find file matching '#{identifier}'."
+            description: "No file with identifier '#{identifier}'."
           },
           status_callbacks
         )
 
       {:file_opened, _} ->
+        Logger.error("File matching identifier '#{identifier}' could not be opened as an image.")
+
         send_error(
           conn,
           500,
-          %{
-            description: "Could not open image file matching '#{identifier}'."
-          },
+          %{},
           status_callbacks
         )
 

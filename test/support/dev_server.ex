@@ -10,7 +10,7 @@ defmodule DevServer do
 
     opts = [strategy: :one_for_one, name: DevServerPlug.Supervisor]
 
-    Logger.info("Starting application...")
+    Logger.info("Starting dev server...")
     Supervisor.start_link(children, opts)
   end
 end

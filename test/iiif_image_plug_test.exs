@@ -5,9 +5,6 @@ defmodule IIIFImagePlug.V3Test do
   import Plug.Test
   import ExUnit.CaptureLog
 
-  alias Vix.Vips.Operation
-  alias Vix.Vips.Image
-
   @opts DevServerPlug.init([])
   @sample_image_name "bentheim_mill.jpg"
 
@@ -38,8 +35,8 @@ defmodule IIIFImagePlug.V3Test do
                "sizeByWh",
                "sizeUpscaling"
              ],
-             "height" => 400,
-             "id" => "http://localhost/bentheim_mill.jpg",
+             "height" => 300,
+             "id" => "http://localhost:4000/bentheim_mill.jpg",
              "maxArea" => 100_000_000,
              "maxHeight" => 10000,
              "maxWidth" => 10000,
@@ -48,7 +45,7 @@ defmodule IIIFImagePlug.V3Test do
              "protocol" => "http://iiif.io/api/image",
              "rights" => "https://creativecommons.org/publicdomain/zero/1.0/",
              "type" => "ImageServer3",
-             "width" => 400
+             "width" => 500
            } = response
   end
 
@@ -84,21 +81,115 @@ defmodule IIIFImagePlug.V3Test do
     assert log =~ "File matching identifier '#{unsupported}' could not be opened as an image."
   end
 
-  test "returns the image data of the sample image" do
-    conn = conn(:get, "/#{@sample_image_name}/full/max/0/default.jpg")
+  @paths_root "test/images/test_paths"
 
-    conn = DevServerPlug.call(conn, @opts)
+  describe "image data endpoint" do
+    test "returns the image data of the sample image" do
+      File.ls!(@paths_root)
+      |> Enum.map(fn region ->
+        File.ls!("#{@paths_root}/#{region}")
+        |> Enum.map(fn size ->
+          File.ls!("#{@paths_root}/#{region}/#{size}")
+          |> Enum.map(fn rotation ->
+            File.ls!("#{@paths_root}/#{region}/#{size}/#{rotation}")
+            |> Enum.map(fn quality_and_format ->
+              "#{region}/#{size}/#{rotation}/#{quality_and_format}"
+            end)
+          end)
+          |> List.flatten()
+        end)
+        |> List.flatten()
+      end)
+      |> List.flatten()
+      # |> IO.inspect()
+      |> Enum.each(fn path ->
+        conn = conn(:get, "/#{@sample_image_name}/#{path}")
 
-    assert conn.state == :chunked
-    assert conn.status == 200
+        conn = DevServerPlug.call(conn, @opts)
 
-    {:ok, from_file} = Image.new_from_file("test/images/#{@sample_image_name}")
-    {:ok, from_response} = Image.new_from_buffer(conn.resp_body)
+        if String.ends_with?(path, "tif") do
+          assert conn.state == :sent
+        else
+          assert conn.state == :chunked
+        end
 
-    assert Image.width(from_file) == Image.width(from_response)
-    assert Image.height(from_file) == Image.height(from_response)
+        assert conn.status == 200
 
-    assert Operation.avg!(from_file) |> Float.round(3) ==
-             Operation.avg!(from_response) |> Float.round(3)
+        {:ok, from_file} = Image.open("#{@paths_root}/#{path}")
+        {:ok, from_response} = Image.from_binary(conn.resp_body)
+
+        assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+      end)
+    end
+
+    # test "returns the tif image data not chunked but buffered" do
+    #   path = "full/max/0/default.tif"
+
+    #   conn = conn(:get, "/#{@sample_image_name}/#{path}")
+
+    #   conn = DevServerPlug.call(conn, @opts)
+
+    #   assert conn.state == :sent
+    #   assert conn.status == 200
+
+    #   {:ok, from_file} = Image.open("test/images/#{path}")
+    #   {:ok, from_response} = Image.from_binary(conn.resp_body)
+
+    #   assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+    # end
+
+    test "returns 404 for unknown identifier" do
+      unknown_identifier = "does_not_exist.jpg"
+      conn = conn(:get, "/#{unknown_identifier}/full/max/0/default.jpg")
+
+      conn = DevServerPlug.call(conn, @opts)
+
+      assert conn.state == :sent
+      assert conn.status == 404
+
+      response = Jason.decode!(conn.resp_body)
+
+      msg = "No file with identifier '#{unknown_identifier}'."
+
+      assert %{"description" => ^msg} = response
+    end
+
+    test "returns 400 for invalid parameters" do
+      conn = conn(:get, "/#{@sample_image_name}/nope/max/0/default.jpg")
+
+      conn = DevServerPlug.call(conn, @opts)
+
+      assert conn.state == :sent
+      assert conn.status == 400
+    end
+
+    test "returns 500 when attempting to open unsupported file and error gets logged" do
+      unsupported = "not_an_image.txt"
+
+      conn = conn(:get, "/#{unsupported}/full/max/0/default.jpg")
+
+      log =
+        capture_log(fn ->
+          conn = DevServerPlug.call(conn, @opts)
+          assert conn.state == :sent
+          assert conn.status == 500
+        end)
+
+      assert log =~ "File matching identifier '#{unsupported}' could not be opened as an image."
+    end
+
+    test "returns 400 for unsupported quality or format" do
+      conn = conn(:get, "/#{@sample_image_name}/full/max/0/default.txt")
+
+      conn = DevServerPlug.call(conn, @opts)
+      assert conn.state == :sent
+      assert conn.status == 400
+
+      response = Jason.decode!(conn.resp_body)
+
+      msg = "Could not find parse valid quality and format from 'default.txt'."
+
+      assert %{"description" => ^msg} = response
+    end
   end
 end

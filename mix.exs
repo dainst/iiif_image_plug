@@ -35,7 +35,8 @@ defmodule IIIFImagePlug.MixProject do
       {:plug, "~> 1.16"},
       {:vix, "~> 0.33.0"},
       {:jason, "~> 1.4"},
-      {:bandit, "~> 1.6", only: [:test, :dev]}
+      {:bandit, "~> 1.6", only: [:test, :dev]},
+      {:image, "~> 0.59.0", only: [:test]}
     ]
   end
 end
