@@ -15,7 +15,11 @@ defmodule IIIFImagePlug.MixProject do
           DevServerPlug
         ]
       ],
-      deps: deps()
+      name: "IIIFImagePlug",
+      source_url: "https://github.com/dainst/iiif_image_plug",
+      description: "An Elixir Plug implementing the IIIF image API specification.",
+      deps: deps(),
+      package: package()
     ]
   end
 
@@ -44,6 +48,18 @@ defmodule IIIFImagePlug.MixProject do
       {:jason, "~> 1.4"},
       {:bandit, "~> 1.6", only: [:test, :dev]},
       {:image, "~> 0.59.0", only: [:test]}
+    ]
+  end
+
+  defp package() do
+    [
+      files: ~w(lib priv .formatter.exs mix.exs README* readme* LICENSE*
+                license* CHANGELOG* changelog* src),
+      licenses: ["Apache-2.0"],
+      links: %{
+        "GitHub" => "https://github.com/dainst/iiif_image_plug",
+        "International Image Interoperability Framework" => "https://iiif.io/"
+      }
     ]
   end
 end
