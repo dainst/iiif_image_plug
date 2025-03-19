@@ -36,7 +36,7 @@ Assuming you want to serve IIIF in your plug based server at "/iiif/v3", add a f
   )
 ```
 
-The only required options here is `:identifier_to_path_callback` which lets the plug map the IIIF [identifier](https://iiif.io/api/image/3.0/#21-image-request-uri-syntax) to an actual file path in your file system. 
+The option `:identifier_to_path_callback` lets the plug map the IIIF [identifier](https://iiif.io/api/image/3.0/#21-image-request-uri-syntax) to an actual file path in your file system. 
 
 `ImageStore.identifier_to_path/1` in this case might look something like this:
 
