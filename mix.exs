@@ -19,7 +19,8 @@ defmodule IIIFImagePlug.MixProject do
       source_url: "https://github.com/dainst/iiif_image_plug",
       description: "An Elixir Plug implementing the IIIF image API specification.",
       deps: deps(),
-      package: package()
+      package: package(),
+      docs: docs()
     ]
   end
 
@@ -48,7 +49,7 @@ defmodule IIIFImagePlug.MixProject do
       {:jason, "~> 1.4"},
       {:bandit, "~> 1.6", only: [:test, :dev]},
       {:image, "~> 0.59.0", only: [:test]},
-      {:ex_doc, "~> 0.14", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.37", only: :dev, runtime: false}
     ]
   end
 
@@ -60,6 +61,15 @@ defmodule IIIFImagePlug.MixProject do
         "GitHub" => "https://github.com/dainst/iiif_image_plug",
         "International Image Interoperability Framework" => "https://iiif.io/"
       }
+    ]
+  end
+
+  defp docs() do
+    [
+      extras: [
+        "README.md": [title: "Overview"],
+        LICENSE: [title: "License"]
+      ]
     ]
   end
 end

@@ -1,4 +1,4 @@
-# IIIFImagePlug
+# IIIF Image Plug
 
 An Elixir [plug](https://hexdocs.pm/plug/readme.html) implementing the _International Image Interoperability Framework_ ([IIIF](https://iiif.io/)) image API specification. 
 
@@ -8,18 +8,20 @@ An Elixir [plug](https://hexdocs.pm/plug/readme.html) implementing the _Internat
 - For the time beeing only (the current) Image API 3.0 is implemented, check out the IIIF [documentation](https://iiif.io/api/image/3.0/) for its capabilities.
 - The image processing is handled by [libvips](https://www.libvips.org/) via [Vix](https://hex.pm/packages/vix).
 
-# Installation 
+## Installation 
 
-There are no official releases on [hex.pm](hex.pm) yet, you can add the plug as a git dependency:
+The package can be installed
+by adding `iiif_image_plug` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:iiif_image_plug, git: "https://github.com/dainst/iiif_image_plug.git" }
+    {:iiif_image_plug, "~> 0.1.0"}
   ]
+end
 ```
 
-# Usage
+## Usage
 
 Assuming you want to serve IIIF in your plug based server at "/iiif/v3", add a forward route like this: 
 
@@ -50,7 +52,7 @@ A GET request `/iiif/v3/sample_image.jpg/info.json` would then cause the plug to
 
 The other options above `:scheme`, `:host`, `:port` and `:prefix` are used to generate the image's `id` field in its `info.json` (see IIIF [docs](https://iiif.io/api/image/3.0/#51-image-information-request)).
 
-## Options
+### Options
 
 The complete list of plug options:
 
@@ -68,21 +70,8 @@ The complete list of plug options:
 - `:identifier_to_part_of_callback` (optional), expects a callback function that returns a list of [part of](https://iiif.io/api/image/3.0/#58-linking-properties) properties for a given identifier.
 - `:identifier_to_see_also_callback` (optional), expects a callback function that returns a list of [see also](https://iiif.io/api/image/3.0/#58-linking-properties) properties for a given identifier.
 - `:identifier_to_see_also_callback` (optional), expects a callback function that returns a list of [service](https://iiif.io/api/image/3.0/#58-linking-properties) properties for a given identifier.
-<!-- If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `iiif_image_plug` to your list of dependencies in `mix.exs`:
 
-```elixir
-def deps do
-  [
-    {:iiif_plug, "~> 0.1.0"}
-  ]
-end
-```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/iiif_plug>. -->
-# Development
+## Development
 
 This repository comes with a minimalistic server, run the server with:
 
@@ -90,8 +79,8 @@ This repository comes with a minimalistic server, run the server with:
 iex -S mix run
 ```
 
+The metadata of the main sample file can now be accessed at http://127.0.0.1:4000/bentheim.jpg/info.json:
 
-The metadata of the main [sample file](test/images/bentheim.jpg) can be found at http://127.0.0.1:4000/bentheim.jpg/info.json:
 ```json
 {
     "id": "http://localhost:4000/bentheim.jpg",
@@ -133,7 +122,5 @@ The metadata of the main [sample file](test/images/bentheim.jpg) can be found at
     ]
 }
 ```
-The image data of the sample file can be viewed at http://127.0.0.1:4000/bentheim.jpg/full/max/0/default.jpg and you are able to play around with the IIIF API parameters:
 
-
-![bentheim.jpg](test/images/bentheim.jpg)
+The image data of the sample file can be viewed at http://127.0.0.1:4000/bentheim.jpg/full/max/0/default.jpg and you are able to play around with the IIIF API parameters.
