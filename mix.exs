@@ -58,8 +58,7 @@ defmodule IIIFImagePlug.MixProject do
       links: %{
         "GitHub" => "https://github.com/dainst/iiif_image_plug",
         "International Image Interoperability Framework" => "https://iiif.io/"
-      },
-      organization: "dainst"
+      }
     ]
   end
 end
