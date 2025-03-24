@@ -2,6 +2,8 @@ defmodule DevServerPlug do
   use Plug.Router
   use Plug.Debugger
 
+  @moduledoc false
+
   plug(:match)
   plug(:dispatch)
 

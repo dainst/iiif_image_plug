@@ -1,4 +1,6 @@
 defmodule DevCallbacks do
+  @moduledoc false
+
   def identifier_to_path(identifier) do
     "test/images/#{identifier}"
   end

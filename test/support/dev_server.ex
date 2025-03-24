@@ -3,6 +3,8 @@ defmodule DevServer do
 
   require Logger
 
+  @moduledoc false
+
   def start(_type, _args) do
     children = [
       {Bandit, plug: DevServerPlug}
