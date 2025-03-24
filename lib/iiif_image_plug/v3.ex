@@ -58,9 +58,9 @@ defmodule IIIFImagePlug.V3 do
   @default_preferred_format [:webp, :jpg]
   @default_extra_formats [:png, :tif]
 
-  @default_max_width Application.compile_env(:iiif_image_plug, :max_width)
-  @default_max_height Application.compile_env(:iiif_image_plug, :max_height)
-  @default_max_area Application.compile_env(:iiif_image_plug, :max_area)
+  @default_max_width Application.compile_env(:iiif_image_plug, :max_width, 10000)
+  @default_max_height Application.compile_env(:iiif_image_plug, :max_height, 10000)
+  @default_max_area Application.compile_env(:iiif_image_plug, :max_area, 10000 * 10000)
 
   def init(opts) when is_map(opts) do
     %Settings{
