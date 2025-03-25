@@ -108,10 +108,10 @@ The metadata of the main sample file can now be accessed at http://127.0.0.1:400
         "sizeUpscaling"
     ],
     "preferredFormat": [
-        "webp",
         "jpg"
     ],
     "extraFormats": [
+        "webp",
         "png",
         "tif"
     ],
