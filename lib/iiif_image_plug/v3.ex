@@ -55,8 +55,8 @@ defmodule IIIFImagePlug.V3 do
     ]
   end
 
-  @default_preferred_format [:webp, :jpg]
-  @default_extra_formats [:png, :tif]
+  @default_preferred_format [:jpg]
+  @default_extra_formats [:webp, :png, :tif]
 
   @default_max_width Application.compile_env(:iiif_image_plug, :max_width, 10000)
   @default_max_height Application.compile_env(:iiif_image_plug, :max_height, 10000)
@@ -140,62 +140,10 @@ defmodule IIIFImagePlug.V3 do
           extraFormats: settings.extra_formats,
           extraQualities: [:color, :gray, :bitonal]
         }
-
-      info =
-        if rights_callback do
-          rights_callback.(identifier)
-          |> case do
-            {:ok, statement} when is_binary(statement) ->
-              Map.put(info, :rights, statement)
-
-            _ ->
-              info
-          end
-        else
-          info
-        end
-
-      info =
-        if see_also_callback do
-          see_also_callback.(identifier)
-          |> case do
-            {:ok, result} ->
-              Map.put(info, :seeAlso, result)
-
-            _ ->
-              info
-          end
-        else
-          info
-        end
-
-      info =
-        if part_of_callback do
-          part_of_callback.(identifier)
-          |> case do
-            {:ok, result} ->
-              Map.put(info, :partOf, result)
-
-            _ ->
-              info
-          end
-        else
-          info
-        end
-
-      info =
-        if service_callback do
-          service_callback.(identifier)
-          |> case do
-            {:ok, result} ->
-              Map.put(info, :service, result)
-
-            _ ->
-              info
-          end
-        else
-          info
-        end
+        |> maybe_add_callback_data(identifier, rights_callback, :rights)
+        |> maybe_add_callback_data(identifier, see_also_callback, :seeAlso)
+        |> maybe_add_callback_data(identifier, part_of_callback, :partOf)
+        |> maybe_add_callback_data(identifier, service_callback, :service)
 
       conn
       |> put_resp_content_type("application/ld+json")
@@ -382,6 +330,21 @@ defmodule IIIFImagePlug.V3 do
         code,
         Jason.encode!(info)
       )
+    end
+  end
+
+  defp maybe_add_callback_data(info, _identifier, nil, _key) do
+    info
+  end
+
+  defp maybe_add_callback_data(info, identifier, callback, key) do
+    callback.(identifier)
+    |> case do
+      {:ok, result} ->
+        Map.put(info, key, result)
+
+      _ ->
+        info
     end
   end
 end

@@ -20,7 +20,7 @@ defmodule IIIFImagePlug.V3Test do
 
     assert %{
              "@context" => "http://iiif.io/api/image/3/context.json",
-             "extraFormats" => ["png", "tif"],
+             "extraFormats" => ["webp", "png", "tif"],
              "extraQualities" => ["color", "gray", "bitonal"],
              "extra_features" => [
                "mirroring",
@@ -40,7 +40,7 @@ defmodule IIIFImagePlug.V3Test do
              "maxArea" => 240_000,
              "maxHeight" => 400,
              "maxWidth" => 600,
-             "preferredFormat" => ["webp", "jpg"],
+             "preferredFormat" => ["jpg"],
              "profile" => "level2",
              "protocol" => "http://iiif.io/api/image",
              "rights" => "https://creativecommons.org/publicdomain/zero/1.0/",
