@@ -1,14 +1,24 @@
 defmodule IIIFImagePlug.V3.Region do
+  defmodule ExtractArea do
+    @enforce_keys [:left, :top, :width, :height]
+    defstruct [:left, :top, :width, :height]
+  end
+
   alias Vix.Vips.{
     Operation,
     Image
   }
 
-  def parse_and_apply(%Image{} = image, "full") do
-    image
+  def parse(%Image{} = image, "full") do
+    %ExtractArea{
+      left: 0,
+      top: 0,
+      width: Image.width(image),
+      height: Image.height(image)
+    }
   end
 
-  def parse_and_apply(%Image{} = image, "square") do
+  def parse(%Image{} = image, "square") do
     width = Image.width(image)
     height = Image.height(image)
 
@@ -24,10 +34,15 @@ defmodule IIIFImagePlug.V3.Region do
           {0, div(height - width, 2), width, width}
       end
 
-    Operation.extract_area!(image, left, top, width, height)
+    %ExtractArea{
+      left: left,
+      top: top,
+      width: width,
+      height: height
+    }
   end
 
-  def parse_and_apply(%Image{} = image, "pct:" <> region_params) do
+  def parse(%Image{} = image, "pct:" <> region_params) when is_binary(region_params) do
     String.replace(region_params, "pct:", "")
     |> String.split(",")
     |> case do
@@ -60,17 +75,19 @@ defmodule IIIFImagePlug.V3.Region do
         width_in_pixel = (image_width * (width / 100)) |> trunc()
         height_in_pixel = (image_height * (height / 100)) |> trunc()
 
-        parse_and_apply(
-          image,
-          "#{left_in_pixel},#{top_in_pixel},#{width_in_pixel},#{height_in_pixel}"
-        )
+        %ExtractArea{
+          left: left_in_pixel,
+          top: top_in_pixel,
+          width: width_in_pixel,
+          height: height_in_pixel
+        }
 
       _ ->
         {:error, :invalid_region}
     end
   end
 
-  def parse_and_apply(%Image{} = image, region_params) when is_binary(region_params) do
+  def parse(%Image{} = image, region_params) when is_binary(region_params) do
     region_params
     |> String.split(",")
     |> case do
@@ -111,7 +128,12 @@ defmodule IIIFImagePlug.V3.Region do
               height
             end
 
-          Operation.extract_area!(image, left, top, width, height)
+          %ExtractArea{
+            left: left,
+            top: top,
+            width: width,
+            height: height
+          }
         else
           {:error, :invalid_region}
         end
@@ -119,5 +141,28 @@ defmodule IIIFImagePlug.V3.Region do
       _ ->
         {:error, :invalid_region}
     end
+  end
+
+  def parse(_image, _param) do
+    {:error, :invalid_region}
+  end
+
+  def apply(%Image{} = image, %ExtractArea{left: 0, top: 0, width: width, height: height}) do
+    image_width = Image.width(image)
+    image_height = Image.height(image)
+
+    if image_width == width and image_height == height do
+      image
+    else
+      Operation.extract_area!(image, 0, 0, width, height)
+    end
+  end
+
+  def apply(%Image{} = image, %ExtractArea{left: left, top: top, width: width, height: height}) do
+    Operation.extract_area!(image, left, top, width, height)
+  end
+
+  def apply(error, _) do
+    error
   end
 end

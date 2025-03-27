@@ -1,12 +1,15 @@
 defmodule IIIFImagePlug.V3.Size do
-  alias Vix.Vips.{
-    Operation,
-    Image
-  }
+  alias Vix.Vips.Operation
+  alias Vix.Vips.Image
 
   alias IIIFImagePlug.V3.Settings
 
-  def parse_and_apply(%Image{} = image, "max", %Settings{} = settings) do
+  defmodule Scaling do
+    @enforce_keys [:scale]
+    defstruct [:scale, :vscale]
+  end
+
+  def parse(%Image{} = image, "max", %Settings{} = settings) do
     image_width = Image.width(image)
     image_height = Image.height(image)
 
@@ -18,7 +21,7 @@ defmodule IIIFImagePlug.V3.Size do
     # - If it is smaller than 1, the image will get scaled down.
     # - If all factors are larger than 1, all dimensions and the area fall within the plugs maxima and we fallback to a factor of 1 (no scaling).
 
-    factor =
+    scale =
       Enum.min(
         [
           :math.sqrt(settings.max_area / image_area),
@@ -31,31 +34,28 @@ defmodule IIIFImagePlug.V3.Size do
         end
       )
 
-    if factor == 1 do
-      image
-    else
-      Operation.resize!(image, factor)
-    end
+    %Scaling{scale: scale}
   end
 
-  def parse_and_apply(%Image{} = image, "^max", settings) do
+  def parse(%Image{} = image, "^max", %Settings{} = settings) do
     image_width = Image.width(image)
     image_height = Image.height(image)
 
     image_area = image_width * image_height
 
     # Select the smallest factor that would scale the image to one of the plug's maxima.
-    factor =
+
+    scale =
       Enum.min([
         :math.sqrt(settings.max_area / image_area),
         settings.max_width / image_width,
         settings.max_height / image_height
       ])
 
-    Operation.resize!(image, factor)
+    %Scaling{scale: scale}
   end
 
-  def parse_and_apply(%Image{} = image, size_parameter, settings)
+  def parse(%Image{} = image, size_parameter, %Settings{} = settings)
       when is_binary(size_parameter) do
     upscale? = String.starts_with?(size_parameter, "^")
     size_parameter = String.replace_leading(size_parameter, "^", "")
@@ -64,54 +64,75 @@ defmodule IIIFImagePlug.V3.Size do
     size_parameter = String.replace_leading(size_parameter, "!", "")
 
     if String.starts_with?(size_parameter, "pct:") do
-      size_parameter
-      |> String.replace_leading("pct:", "")
-      |> Integer.parse()
-      |> case do
-        {percent, ""} when percent >= 0 and upscale? ->
-          requested_factor = percent / 100
-
-          image_width = Image.width(image)
-          image_height = Image.height(image)
-          image_area = image_width * image_height
-
-          valid_maximum_factor =
-            Enum.min([
-              :math.sqrt(settings.max_area / image_area),
-              settings.max_width / image_width,
-              settings.max_height / image_height
-            ])
-
-          factor =
-            if requested_factor < valid_maximum_factor,
-              do: requested_factor,
-              else: valid_maximum_factor
-
-          Operation.resize!(image, factor)
-
-        {percent, ""} when percent > 100 ->
-          {:error, :invalid_size}
-
-        {percent, ""} when percent >= 0 ->
-          Operation.resize!(image, percent / 100)
-
-        _ ->
-          {:error, :invalid_size}
-      end
+      parse_percent(image, size_parameter, upscale?, settings)
     else
       w_h = String.split(size_parameter, ",")
-
-      apply_w_h_Transformer(image, w_h, upscale?, maintain_ratio?, settings)
+      parse_w_h(image, w_h, upscale?, maintain_ratio?, settings)
     end
   end
 
-  def parse_and_apply(error, _, _), do: error
+  def parse(error, _params, _settings) do
+    error
+  end
 
-  defp apply_w_h_Transformer(
-         image,
+  def apply(%Image{} = image, %Scaling{scale: 1, vscale: nil}) do
+    image
+  end
+
+  def apply(%Image{} = image, %Scaling{scale: scale, vscale: nil}) do
+    Operation.resize!(image, scale)
+  end
+
+  def apply(%Image{} = image, %Scaling{scale: scale, vscale: vscale}) do
+    Operation.resize!(image, scale, vscale: vscale)
+  end
+
+  def apply(_image, _scaling) do
+    {:error, :invalid_size}
+  end
+
+  defp parse_percent(%Image{} = image, parameter, upscale?, %Settings{} = settings) do
+    parameter
+    |> String.replace_leading("pct:", "")
+    |> Integer.parse()
+    |> case do
+      {percent, ""} when percent >= 0 and upscale? ->
+        requested_factor = percent / 100
+
+        image_width = Image.width(image)
+        image_height = Image.height(image)
+        image_area = image_width * image_height
+
+        valid_maximum_factor =
+          Enum.min([
+            :math.sqrt(settings.max_area / image_area),
+            settings.max_width / image_width,
+            settings.max_height / image_height
+          ])
+
+        scale =
+          if requested_factor < valid_maximum_factor,
+            do: requested_factor,
+            else: valid_maximum_factor
+
+        %Scaling{scale: scale}
+
+      {percent, ""} when percent > 100 ->
+        {:error, :invalid_size}
+
+      {percent, ""} when percent >= 0 ->
+        %Scaling{scale: percent / 100}
+
+      _ ->
+        {:error, :invalid_size}
+    end
+  end
+
+  defp parse_w_h(
+         %Image{} = image,
          [w_parameter, ""],
          upscale?,
-         _maintain_ratio?,
+         _maintain_ration?,
          %Settings{} = settings
        ) do
     Integer.parse(w_parameter)
@@ -133,18 +154,18 @@ defmodule IIIFImagePlug.V3.Size do
                 settings.max_height / image_height
               ])
 
-            factor =
+            scale =
               if requested_factor < valid_maximum_factor,
                 do: requested_factor,
                 else: valid_maximum_factor
 
-            Operation.resize!(image, factor)
+            %Scaling{scale: scale}
 
           w > image_width ->
             {:error, :invalid_size}
 
           true ->
-            Operation.resize!(image, w / image_width)
+            %Scaling{scale: w / image_width}
         end
 
       _ ->
@@ -152,7 +173,7 @@ defmodule IIIFImagePlug.V3.Size do
     end
   end
 
-  defp apply_w_h_Transformer(
+  defp parse_w_h(
          image,
          ["", h_parameter],
          upscale?,
@@ -182,13 +203,13 @@ defmodule IIIFImagePlug.V3.Size do
                 do: requested_factor,
                 else: valid_maximum_factor
 
-            Operation.resize!(image, factor)
+            %Scaling{scale: factor}
 
           h > image_height ->
             {:error, :invalid_size}
 
           true ->
-            Operation.resize!(image, h / image_height)
+            %Scaling{scale: h / image_height}
         end
 
       _ ->
@@ -196,7 +217,7 @@ defmodule IIIFImagePlug.V3.Size do
     end
   end
 
-  defp apply_w_h_Transformer(
+  defp parse_w_h(
          image,
          [w_parameter, h_parameter],
          upscale?,
@@ -229,7 +250,7 @@ defmodule IIIFImagePlug.V3.Size do
                 do: valid_requested_factor,
                 else: valid_maximum_factor
 
-            Operation.resize!(image, factor)
+            %Scaling{scale: factor}
 
           upscale? ->
             requested_width_factor = w / image_width
@@ -248,17 +269,17 @@ defmodule IIIFImagePlug.V3.Size do
                 do: requested_height_factor,
                 else: max_height_factor
 
-            Operation.resize!(image, width_factor, vscale: height_factor)
+            %Scaling{scale: width_factor, vscale: height_factor}
 
           w > image_width or h > image_height ->
             {:error, :invalid_size}
 
           maintain_ratio? ->
             {dividend, divisor} = if w < h, do: {w, image_width}, else: {h, image_height}
-            Operation.resize!(image, dividend / divisor)
+            %Scaling{scale: dividend / divisor}
 
           true ->
-            Operation.resize!(image, w / image_width, vscale: h / image_height)
+            %Scaling{scale: w / image_width, vscale: h / image_height}
         end
 
       _ ->
@@ -266,7 +287,7 @@ defmodule IIIFImagePlug.V3.Size do
     end
   end
 
-  defp apply_w_h_Transformer(_image, _w_h_parameter, _upscale?, _maintain_ratio?, _settings) do
+  defp parse_w_h(_image, _w_h_parameter, _upscale?, _maintain_ratio?, _settings) do
     {:error, :invalid_size}
   end
 end
