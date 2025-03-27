@@ -1,4 +1,4 @@
-defmodule IiifImagePlug.V3.Info do
+defmodule IIIFImagePlug.V3.Information do
   alias Vix.Vips.Image
   alias IIIFImagePlug.V3.Settings
 

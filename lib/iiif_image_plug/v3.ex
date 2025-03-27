@@ -3,13 +3,12 @@ defmodule IIIFImagePlug.V3 do
 
   import Plug.Conn
 
-  alias IiifImagePlug.V3.Info
+  alias IIIFImagePlug.V3.Size.Scaling
 
   alias IIIFImagePlug.V3.{
-    Quality,
-    Region,
-    Rotation,
-    Size
+    Data,
+    Information,
+    Quality
   }
 
   alias Vix.Vips.Image
@@ -95,7 +94,7 @@ defmodule IIIFImagePlug.V3 do
         %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
         %Settings{status_callbacks: status_callbacks} = settings
       ) do
-    case Info.evaluate(identifier, settings) do
+    case Information.evaluate(identifier, settings) do
       {:ok, info} ->
         conn
         |> put_resp_content_type("application/ld+json")
@@ -146,24 +145,25 @@ defmodule IIIFImagePlug.V3 do
           _ -> 1
         end
 
-      pages =
-        if page_count > 1 do
-          last_page = page_count - 1
+      if page_count > 1 do
+        last_page = page_count - 1
 
+        width = Image.width(file)
+
+        pages =
           0..last_page
           |> Enum.map(fn page ->
             {:ok, page_image} = Image.new_from_file(path, page: page)
 
-            width = Image.width(page_image)
-            height = Image.height(page_image)
+            page_width = Image.width(page_image)
 
-            {page_image, width, height}
+            {page_image, %Scaling{scale: page_width / width}}
           end)
-        else
-          []
-        end
 
-      apply_operations(file, region, size, rotation, quality, settings, pages)
+        Data.process_page_optimized(file, region, size, rotation, quality, settings, pages)
+      else
+        Data.process_basic(file, region, size, rotation, quality, settings)
+      end
       |> case do
         %Image{} = transformed ->
           if format == "tif" do
@@ -225,132 +225,6 @@ defmodule IIIFImagePlug.V3 do
       callbacks
     )
   end
-
-  defp apply_operations(
-         %Image{} = input_file,
-         region,
-         size,
-         rotation,
-         quality,
-         %Settings{} = settings,
-         []
-       )
-       when is_binary(region) and is_binary(size) and is_binary(rotation) and
-              quality in [:default, :color, :gray, :bitonal] do
-    with %Region.ExtractArea{} = area <- Region.parse(input_file, region),
-         %Image{} = applied_region <- Region.apply(input_file, area),
-         %Size.Scaling{} = scaling <- Size.parse(applied_region, size, settings),
-         %Image{} = applied_scaling <- Size.apply(applied_region, scaling),
-         average <-
-           (fn ->
-              if quality == :bitonal do
-                Vix.Vips.Operation.avg!(applied_scaling)
-              else
-                nil
-              end
-            end).(),
-         %Rotation.Rotation{} = rotation <- Rotation.parse(rotation),
-         %Image{} = applied_rotation <- Rotation.apply(applied_scaling, rotation),
-         %Image{} = applied_quality <- Quality.apply(applied_rotation, quality, average) do
-      applied_quality
-    else
-      error ->
-        error
-    end
-  end
-
-  # defp apply_operations(
-  #        %Image{} = input_file,
-  #        region,
-  #        size,
-  #        rotation,
-  #        quality,
-  #        %Settings{} = settings,
-  #        pages
-  #      )
-  #      when is_binary(region) and is_binary(size) and is_binary(rotation) and
-  #             quality in [:default, :color, :gray, :bitonal] do
-  #   rotation = Rotation.parse(rotation)
-  #   region_applied = Region.parse_and_apply(input_file, URI.decode(region))
-
-  #   result =
-  #     Size.parse(region_applied, URI.decode(size), settings)
-  #     |> case do
-  #       %Scaling{scale: scale, vscale: vscale} = scaling ->
-  #         IO.inspect(Image.width(region_applied))
-  #         IO.inspect(Image.height(region_applied))
-  #         IO.inspect(scaling)
-
-  #         if pages != [] do
-  #           Enum.map(pages, fn {page, width, height} ->
-  #             {page, %Scaling{scale: width / Image.width(input_file)}}
-  #           end)
-  #           |> Enum.filter(fn {_page, %Scaling{scale: page_scale}} ->
-  #             scale < page_scale
-  #           end)
-  #           |> IO.inspect()
-  #           |> Enum.min_by(fn {_page, %Scaling{scale: scale}} ->
-  #             scale
-  #           end)
-  #           |> IO.inspect()
-  #           |> case do
-  #             {page, %Scaling{scale: page_scale}} ->
-  #               adjusted_scale = scale / page_scale
-
-  #               IO.inspect(Image.width(page))
-  #               IO.inspect(Image.height(page))
-  #               adjusted_image = Operation.resize!(page, adjusted_scale) |> IO.inspect()
-
-  #               IO.inspect(Image.width(adjusted_image))
-  #               IO.inspect(Image.height(adjusted_image))
-
-  #               IO.inspect("using page")
-  #               adjusted_image
-
-  #             _ ->
-  #               scaling_applied =
-  #                 if vscale do
-  #                   Operation.resize!(region_applied, scale, vscale: vscale)
-  #                 else
-  #                   Operation.resize!(region_applied, scale)
-  #                 end
-
-  #               IO.inspect(Image.width(scaling_applied))
-  #               IO.inspect(Image.height(scaling_applied))
-  #               IO.inspect("using default")
-  #               scaling_applied
-  #           end
-  #         else
-  #           scaling_applied =
-  #             if vscale do
-  #               Operation.resize!(region_applied, scale, vscale: vscale)
-  #             else
-  #               Operation.resize!(region_applied, scale)
-  #             end
-
-  #           IO.inspect(Image.width(scaling_applied))
-  #           IO.inspect(Image.height(scaling_applied))
-  #           IO.inspect("using default")
-  #           scaling_applied
-  #         end
-
-  #       error ->
-  #         error
-  #     end
-
-  #   average =
-  #     case result do
-  #       %Image{} = image ->
-  #         Vix.Vips.Operation.avg!(image)
-
-  #       _ ->
-  #         nil
-  #     end
-
-  #   result
-  #   |> Rotation.parse_and_apply(rotation)
-  #   |> Quality.parse_and_apply(quality, average)
-  # end
 
   defp send_buffered(conn, %Image{} = image, format) do
     {:ok, buffer} = Image.write_to_buffer(image, ".#{format}")
