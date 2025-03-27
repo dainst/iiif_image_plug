@@ -63,7 +63,7 @@ defmodule IIIFImagePlug.V3Test do
 
     msg = "No file with identifier '#{unknown_identifier}'."
 
-    assert %{"description" => ^msg} = response
+    assert %{"reason" => ^msg} = response
   end
 
   test "returns 500 when attempting to open unsupported file and error gets logged" do
@@ -122,22 +122,6 @@ defmodule IIIFImagePlug.V3Test do
       end)
     end
 
-    # test "returns the tif image data not chunked but buffered" do
-    #   path = "full/max/0/default.tif"
-
-    #   conn = conn(:get, "/#{@sample_image_name}/#{path}")
-
-    #   conn = DevServerPlug.call(conn, @opts)
-
-    #   assert conn.state == :sent
-    #   assert conn.status == 200
-
-    #   {:ok, from_file} = Image.open("test/images/#{path}")
-    #   {:ok, from_response} = Image.from_binary(conn.resp_body)
-
-    #   assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
-    # end
-
     test "returns 404 for unknown identifier" do
       unknown_identifier = "does_not_exist.jpg"
       conn = conn(:get, "/#{unknown_identifier}/full/max/0/default.jpg")
@@ -151,7 +135,7 @@ defmodule IIIFImagePlug.V3Test do
 
       msg = "No file with identifier '#{unknown_identifier}'."
 
-      assert %{"description" => ^msg} = response
+      assert %{"reason" => ^msg} = response
     end
 
     test "returns 400 for invalid parameters" do
@@ -189,7 +173,7 @@ defmodule IIIFImagePlug.V3Test do
 
       msg = "Could not find parse valid quality and format from 'default.txt'."
 
-      assert %{"description" => ^msg} = response
+      assert %{"reason" => ^msg} = response
     end
   end
 end

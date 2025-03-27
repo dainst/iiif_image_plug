@@ -64,7 +64,8 @@ defmodule IIIFImagePlug.V3 do
   An arity 1 callback function that returns a list of [service](https://iiif.io/api/image/3.0/#58-linking-properties) properties for a given identifier.
 
   ## `:status_callbacks` (optional)
-  A map where each key is a HTTP status code (integer), and each value a callback that can be used to replace the plug's default response.
+  A map where each key is a HTTP status code (integer), and each value an arity 2 callback that can be used to replace the plug's default response. Each
+  callback should accept a plug as its first parameter and a Map (containing the error message) as its second parameter.
   """
 
   defmodule Settings do
@@ -153,7 +154,7 @@ defmodule IIIFImagePlug.V3 do
           conn,
           404,
           %{
-            description: "No file with identifier '#{identifier}'."
+            reason: "No file with identifier '#{identifier}'."
           },
           status_callbacks
         )
@@ -249,7 +250,7 @@ defmodule IIIFImagePlug.V3 do
           conn,
           404,
           %{
-            description: "No file with identifier '#{identifier}'."
+            reason: "No file with identifier '#{identifier}'."
           },
           status_callbacks
         )
@@ -269,8 +270,7 @@ defmodule IIIFImagePlug.V3 do
           conn,
           400,
           %{
-            description:
-              "Could not find parse valid quality and format from '#{quality_and_format}'."
+            reason: "Could not find parse valid quality and format from '#{quality_and_format}'."
           },
           status_callbacks
         )
@@ -284,7 +284,7 @@ defmodule IIIFImagePlug.V3 do
     send_error(
       conn,
       400,
-      %{description: "Invalid request scheme.", path_info: conn.path_info},
+      %{reason: "Invalid request scheme.", path_info: conn.path_info},
       callbacks
     )
   end
