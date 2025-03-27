@@ -18,52 +18,52 @@ defmodule IIIFImagePlug.V3 do
   @moduledoc """
   This plug implements the IIIF Image API version 3 (see also https://iiif.io/api/image/3.0/).
 
-  # Options
+  ## Options
 
-  ## `:scheme` (default: `:http`)
+  ### `:scheme` (default: `:http`)
   The scheme used to create the `id` image [information](https://iiif.io/api/image/3.0/#51-image-information-request) requests.
 
-  ## `:host` (default: `"localhost"`)
+  ### `:host` (default: `"localhost"`)
   The host used to create the `id` image [information](https://iiif.io/api/image/3.0/#51-image-information-request) requests.
 
-  ## `:port` (default: `nil`)
+  ### `:port` (default: `nil`)
   The port used to create the `id` image [information](https://iiif.io/api/image/3.0/#51-image-information-request) requests.
 
-  ## `:prefix` (default: `""`)
+  ### `:prefix` (default: `""`)
   The path prefix used to create the `id` image [information](https://iiif.io/api/image/3.0/#51-image-information-request) requests.
 
-  ## `:max_width` (default: `10000`)
+  ### `:max_width` (default: `10000`)
   The maximum image width the plug will serve.
 
-  ## `:max_height` (default: `10000`)
+  ### `:max_height` (default: `10000`)
   The maximum image height the plug will serve.
 
-  ## `:max_area` (default: `100000000`)
+  ### `:max_area` (default: `100000000`)
   The maximum amount of image pixels the plug will serve (does not necessarily have to be `max_width` * `max_height`).
 
-  ## `:preferred_formats` (default: `[:jpg]`)
+  ### `:preferred_formats` (default: `[:jpg]`)
   The [preferred formats](https://iiif.io/api/image/3.0/#55-preferred-formats) to be used for your service.
 
-  ## `:extra_formats` (default: `[:png, :webp, :tif]`)
+  ### `:extra_formats` (default: `[:png, :webp, :tif]`)
   The [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your service can deliver. Note that TIF files
   have to be buffered before they are sent, so large images might cause issues.
 
-  ## `:identifier_to_path_callback` required
+  ### `:identifier_to_path_callback` required
   An arity 1 callback function that resolves a given IIIF identifier to a file path (string).
 
-  ## `:identifier_to_rights_callback` (optional)
+  ### `:identifier_to_rights_callback` (optional)
   An arity 1 callback function that returns a [rights](https://iiif.io/api/image/3.0/#56-rights) statement for a given identifier.
 
-  ## `:identifier_to_part_of_callback` (optional)
+  ### `:identifier_to_part_of_callback` (optional)
   An arity 1 callback function that returns a list of [part of](https://iiif.io/api/image/3.0/#58-linking-properties) properties for a given identifier.
 
-  ## `:identifier_to_see_also_callback` (optional)
+  ### `:identifier_to_see_also_callback` (optional)
   An arity 1 callback function that returns a list of [see also](https://iiif.io/api/image/3.0/#58-linking-properties) properties for a given identifier.
 
-  ## `:identifier_to_service_callback` (optional)
+  ### `:identifier_to_service_callback` (optional)
   An arity 1 callback function that returns a list of [service](https://iiif.io/api/image/3.0/#58-linking-properties) properties for a given identifier.
 
-  ## `:status_callbacks` (optional)
+  ### `:status_callbacks` (optional)
   A map where each key is a HTTP status code (integer), and each value an arity 2 callback that can be used to replace the plug's default response. Each
   callback should accept a plug as its first parameter and a Map (containing the error message) as its second parameter.
   """
