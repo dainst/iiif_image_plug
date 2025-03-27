@@ -38,6 +38,19 @@ Assuming you want to serve IIIF in your plug based server at "/iiif/v3", add a f
   )
 ```
 
+### Phoenix
+For [Phoenix](https://www.phoenixframework.org/) it would look slightly different:
+
+```elixir
+  forward("/iiif/v3", IIIFImagePlug.V3, %{
+    scheme: :http,
+    host: "localhost",
+    port: 4000,
+    prefix: "/api/image/iiif/v3",
+    identifier_to_path_callback: &ImageStore.identifier_to_path/1
+  })
+```
+
 The option `:identifier_to_path_callback` lets the plug map the IIIF [identifier](https://iiif.io/api/image/3.0/#21-image-request-uri-syntax) to an actual file path in your file system. 
 
 `ImageStore.identifier_to_path/1` in this case might look something like this:
