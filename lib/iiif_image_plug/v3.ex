@@ -144,6 +144,7 @@ defmodule IIIFImagePlug.V3 do
         |> maybe_add_callback_data(identifier, see_also_callback, :seeAlso)
         |> maybe_add_callback_data(identifier, part_of_callback, :partOf)
         |> maybe_add_callback_data(identifier, service_callback, :service)
+        |> maybe_add_sizes(file, path)
 
       conn
       |> put_resp_content_type("application/ld+json")
@@ -345,6 +346,42 @@ defmodule IIIFImagePlug.V3 do
 
       _ ->
         info
+    end
+  end
+
+  defp maybe_add_sizes(info, base_image, path) do
+    page_count =
+      try do
+        Image.n_pages(base_image)
+      rescue
+        _ -> 1
+      end
+
+    if page_count > 1 do
+      last_page = page_count - 1
+
+      sizes =
+        0..last_page
+        |> Stream.map(fn page ->
+          {:ok, page_image} = Image.new_from_file(path, page: page)
+
+          width = Image.width(page_image)
+          height = Image.height(page_image)
+
+          %{
+            type: "Size",
+            width: width,
+            heigh: height
+          }
+        end)
+        |> Stream.reject(fn %{width: width} ->
+          width == Image.width(base_image)
+        end)
+        |> Enum.sort_by(fn %{width: width} -> width end)
+
+      Map.put(info, :sizes, sizes)
+    else
+      info
     end
   end
 end
