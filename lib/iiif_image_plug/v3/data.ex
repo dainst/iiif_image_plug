@@ -83,9 +83,12 @@ defmodule IIIFImagePlug.V3.Data do
     |> Stream.filter(fn {_page, %Size.Scaling{scale: page_scale}} ->
       requested_scale < page_scale
     end)
-    |> Enum.min_by(fn {_page, %Size.Scaling{scale: scale}} ->
-      scale
-    end)
+    |> Enum.min_by(
+      fn {_page, %Size.Scaling{scale: scale}} ->
+        scale
+      end,
+      fn -> nil end
+    )
     |> case do
       {page, %Size.Scaling{scale: page_scale}} ->
         adjusted_region =
@@ -115,7 +118,7 @@ defmodule IIIFImagePlug.V3.Data do
 
         Size.apply(adjusted_region, %Scaling{scale: adjusted_scale, vscale: adjusted_vscale})
 
-      _ ->
+      nil ->
         # None of the lower resolution page scales was higher than the requested one, so we use the
         # unoptimized transformation.
         base_image_transformed
