@@ -3,6 +3,8 @@ defmodule IIIFImagePlug.V3 do
 
   import Plug.Conn
 
+  alias IiifImagePlug.V3.Info
+
   alias IIIFImagePlug.V3.{
     Quality,
     Region,
@@ -91,65 +93,14 @@ defmodule IIIFImagePlug.V3 do
 
   def call(
         %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
-        %Settings{
-          identifier_to_path_callback: path_callback,
-          status_callbacks: status_callbacks,
-          identifier_to_rights_callback: rights_callback,
-          identifier_to_part_of_callback: part_of_callback,
-          identifier_to_see_also_callback: see_also_callback,
-          identifier_to_service_callback: service_callback
-        } =
-          settings
+        %Settings{status_callbacks: status_callbacks} = settings
       ) do
-    path = path_callback.(identifier)
+    case Info.evaluate(identifier, settings) do
+      {:ok, info} ->
+        conn
+        |> put_resp_content_type("application/ld+json")
+        |> send_resp(200, Jason.encode!(info))
 
-    with {:file_exists, true} <- {:file_exists, File.exists?(path)},
-         {:file_opened, {:ok, file}} <-
-           {:file_opened, Image.new_from_file(path)} do
-      info =
-        %{
-          "@context": "http://iiif.io/api/image/3/context.json",
-          id:
-            "#{settings.scheme}://#{settings.host}#{if settings.port do
-              ":#{settings.port}"
-            else
-              ""
-            end}#{settings.prefix}/#{identifier}",
-          type: "ImageServer3",
-          protocol: "http://iiif.io/api/image",
-          width: Image.width(file),
-          height: Image.height(file),
-          profile: "level2",
-          maxHeight: settings.max_height,
-          maxWidth: settings.max_width,
-          maxArea: settings.max_area,
-          extra_features: [
-            "mirroring",
-            "regionByPct",
-            "regionByPx",
-            "regionSquare",
-            "rotationArbitrary",
-            "sizeByConfinedWh",
-            "sizeByH",
-            "sizeByPct",
-            "sizeByW",
-            "sizeByWh",
-            "sizeUpscaling"
-          ],
-          preferredFormat: settings.preferred_formats,
-          extraFormats: settings.extra_formats,
-          extraQualities: [:color, :gray, :bitonal]
-        }
-        |> maybe_add_callback_data(identifier, rights_callback, :rights)
-        |> maybe_add_callback_data(identifier, see_also_callback, :seeAlso)
-        |> maybe_add_callback_data(identifier, part_of_callback, :partOf)
-        |> maybe_add_callback_data(identifier, service_callback, :service)
-        |> maybe_add_sizes(file, path)
-
-      conn
-      |> put_resp_content_type("application/ld+json")
-      |> send_resp(200, Jason.encode!(info))
-    else
       {:file_exists, false} ->
         send_error(
           conn,
@@ -430,57 +381,6 @@ defmodule IIIFImagePlug.V3 do
         code,
         Jason.encode!(info)
       )
-    end
-  end
-
-  defp maybe_add_callback_data(info, _identifier, nil, _key) do
-    info
-  end
-
-  defp maybe_add_callback_data(info, identifier, callback, key) do
-    callback.(identifier)
-    |> case do
-      {:ok, result} ->
-        Map.put(info, key, result)
-
-      _ ->
-        info
-    end
-  end
-
-  defp maybe_add_sizes(info, base_image, path) do
-    page_count =
-      try do
-        Image.n_pages(base_image)
-      rescue
-        _ -> 1
-      end
-
-    if page_count > 1 do
-      last_page = page_count - 1
-
-      sizes =
-        0..last_page
-        |> Stream.map(fn page ->
-          {:ok, page_image} = Image.new_from_file(path, page: page)
-
-          width = Image.width(page_image)
-          height = Image.height(page_image)
-
-          %{
-            type: "Size",
-            width: width,
-            heigh: height
-          }
-        end)
-        |> Stream.reject(fn %{width: width} ->
-          width == Image.width(base_image)
-        end)
-        |> Enum.sort_by(fn %{width: width} -> width end)
-
-      Map.put(info, :sizes, sizes)
-    else
-      info
     end
   end
 end
