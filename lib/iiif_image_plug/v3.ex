@@ -208,9 +208,24 @@ defmodule IIIFImagePlug.V3 do
             {page_image, %Scaling{scale: page_width / width}}
           end)
 
-        Data.process_page_optimized(file, region, size, rotation, quality, settings, pages)
+        Data.process_page_optimized(
+          file,
+          URI.decode(region),
+          URI.decode(size),
+          URI.decode(rotation),
+          quality,
+          settings,
+          pages
+        )
       else
-        Data.process_basic(file, region, size, rotation, quality, settings)
+        Data.process_basic(
+          file,
+          URI.decode(region),
+          URI.decode(size),
+          URI.decode(rotation),
+          quality,
+          settings
+        )
       end
       |> case do
         %Image{} = transformed ->
