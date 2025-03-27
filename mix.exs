@@ -4,7 +4,7 @@ defmodule IIIFImagePlug.MixProject do
   def project do
     [
       app: :iiif_image_plug,
-      version: "0.1.1",
+      version: "0.2.0",
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -68,6 +68,7 @@ defmodule IIIFImagePlug.MixProject do
     [
       extras: [
         "README.md": [title: "Overview"],
+        "CHANGELOG.md": [title: "Changelog"],
         LICENSE: [title: "License"]
       ]
     ]
