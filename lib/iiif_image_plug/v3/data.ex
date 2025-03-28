@@ -8,57 +8,101 @@ defmodule IIIFImagePlug.V3.Data do
   alias IIIFImagePlug.V3.Settings
   alias Vix.Vips.Image
 
-  def process_basic(
-        %Image{} = input_file,
+  def process(
+        identifier,
         region,
         size,
         rotation,
-        quality,
-        %Settings{} = settings
-      )
-      when is_binary(region) and is_binary(size) and is_binary(rotation) and
-             quality in [:default, :color, :gray, :bitonal] do
-    with %ExtractArea{} = area <- Region.parse(input_file, region),
-         %Image{} = applied_region <- Region.apply(input_file, area),
-         %Size.Scaling{} = scaling <- Size.parse(applied_region, size, settings),
-         %Image{} = applied_scaling <- Size.apply(applied_region, scaling),
-         average <- calculate_average(applied_scaling, quality),
-         %Rotation.Rotation{} = rotation <- Rotation.parse(rotation),
-         %Image{} = applied_rotation <- Rotation.apply(applied_scaling, rotation),
-         %Image{} = applied_quality <- Quality.apply(applied_rotation, quality, average) do
-      applied_quality
+        quality_and_format,
+        %Settings{
+          identifier_to_path_callback: path_callback
+        } = settings
+      ) do
+    path = path_callback.(identifier)
+
+    with {:file_exists, true} <- {:file_exists, File.exists?(path)},
+         {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},
+         {:quality_and_format_parsed, %{quality: quality, format: format}} <-
+           {:quality_and_format_parsed, Quality.parse(quality_and_format, settings)} do
+      page_count =
+        try do
+          Image.n_pages(file)
+        rescue
+          _ -> 1
+        end
+
+      pages =
+        if page_count > 1 do
+          last_page = page_count - 1
+
+          width = Image.width(file)
+
+          0..last_page
+          |> Enum.map(fn page ->
+            {:ok, page_image} = Image.new_from_file(path, page: page)
+
+            page_width = Image.width(page_image)
+
+            {page_image, %Scaling{scale: page_width / width}}
+          end)
+        else
+          []
+        end
+
+      case pipeline_full(file, region, size, rotation, quality, pages, settings) do
+        %Image{} = image ->
+          {image, format}
+
+        error ->
+          error
+      end
+    end
+  end
+
+  defp pipeline_full(
+         file,
+         region_param,
+         size_param,
+         rotation_param,
+         quality_param,
+         pages,
+         settings
+       ) do
+    with %Region.ExtractArea{} = area <- Region.parse(file, region_param),
+         %Image{} = applied_base_region <- Region.apply(file, area),
+         %Size.Scaling{} = scaling <- Size.parse(applied_base_region, size_param, settings),
+         %Image{} = applied_base_scaling <- Size.apply(applied_base_region, scaling),
+         %Image{} = applied_page_optimized <-
+           page_optimize(area, scaling, file, applied_base_scaling, pages),
+         %Image{} = final <-
+           pipeline_rotation_and_quality(applied_page_optimized, rotation_param, quality_param) do
+      final
     else
       error ->
         error
     end
   end
 
-  def process_page_optimized(
-        %Image{} = input_file,
-        region,
-        size,
-        rotation,
-        quality,
-        %Settings{} = settings,
-        pages
-      )
-      when is_binary(region) and is_binary(size) and is_binary(rotation) and
-             quality in [:default, :color, :gray, :bitonal] and is_list(pages) do
-    with %Region.ExtractArea{} = area <- Region.parse(input_file, region),
-         %Image{} = applied_base_region <- Region.apply(input_file, area),
-         %Size.Scaling{} = scaling <- Size.parse(applied_base_region, size, settings),
-         %Image{} = applied_base_scaling <- Size.apply(applied_base_region, scaling),
-         %Image{} = applied_page_optimized <-
-           page_optimize(area, scaling, input_file, applied_base_scaling, pages),
-         average <- calculate_average(applied_page_optimized, quality),
-         %Rotation.Rotation{} = rotation <- Rotation.parse(rotation),
-         %Image{} = applied_rotation <- Rotation.apply(applied_page_optimized, rotation),
-         %Image{} = final <- Quality.apply(applied_rotation, quality, average) do
+  defp pipeline_rotation_and_quality(image, rotation_param, quality_param) do
+    with average <- calculate_average(image, quality_param),
+         %Rotation.Rotation{} = rotation <- Rotation.parse(rotation_param),
+         %Image{} = image <- Rotation.apply(image, rotation),
+         %Image{} = final <- Quality.apply(image, quality_param, average) do
       final
     else
-      error ->
-        error
+      error -> error
     end
+  end
+
+  defp page_optimize(
+         _area,
+         _scaling,
+         _base_image,
+         base_image_transform,
+         pages
+       )
+       when pages == [] do
+    base_image_transform
   end
 
   defp page_optimize(
@@ -123,16 +167,6 @@ defmodule IIIFImagePlug.V3.Data do
         # unoptimized transformation.
         base_image_transformed
     end
-  end
-
-  defp page_optimize(
-         _area,
-         _scale,
-         _base_image,
-         _base_image_transform,
-         _pages
-       ) do
-    raise "Page optimization with vscale not implemented yet."
   end
 
   defp full_region_requested?(

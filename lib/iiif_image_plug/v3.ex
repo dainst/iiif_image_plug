@@ -3,15 +3,12 @@ defmodule IIIFImagePlug.V3 do
 
   import Plug.Conn
 
-  alias IIIFImagePlug.V3.Size.Scaling
+  alias Vix.Vips.Image
 
   alias IIIFImagePlug.V3.{
     Data,
-    Information,
-    Quality
+    Information
   }
-
-  alias Vix.Vips.Image
 
   require Logger
 
@@ -176,75 +173,26 @@ defmodule IIIFImagePlug.V3 do
           path_info: [identifier, region, size, rotation, quality_and_format]
         } = conn,
         %Settings{
-          identifier_to_path_callback: path_callback,
           status_callbacks: status_callbacks
         } =
           settings
       ) do
-    path = path_callback.(identifier)
-
-    with {:file_exists, true} <- {:file_exists, File.exists?(path)},
-         {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},
-         {:quality_and_format_parsed, %{quality: quality, format: format}} <-
-           {:quality_and_format_parsed, Quality.parse(quality_and_format, settings)} do
-      page_count =
-        try do
-          Image.n_pages(file)
-        rescue
-          _ -> 1
+    case Data.process(identifier, region, size, rotation, quality_and_format, settings) do
+      {%Image{} = image, format} ->
+        if format == "tif" do
+          send_buffered(conn, image, format)
+        else
+          send_stream(conn, image, format)
         end
 
-      if page_count > 1 do
-        last_page = page_count - 1
-
-        width = Image.width(file)
-
-        pages =
-          0..last_page
-          |> Enum.map(fn page ->
-            {:ok, page_image} = Image.new_from_file(path, page: page)
-
-            page_width = Image.width(page_image)
-
-            {page_image, %Scaling{scale: page_width / width}}
-          end)
-
-        Data.process_page_optimized(
-          file,
-          URI.decode(region),
-          URI.decode(size),
-          URI.decode(rotation),
-          quality,
-          settings,
-          pages
+      {:error, msg} ->
+        send_error(
+          conn,
+          400,
+          %{error: msg},
+          status_callbacks
         )
-      else
-        Data.process_basic(
-          file,
-          URI.decode(region),
-          URI.decode(size),
-          URI.decode(rotation),
-          quality,
-          settings
-        )
-      end
-      |> case do
-        %Image{} = transformed ->
-          if format == "tif" do
-            send_buffered(conn, transformed, format)
-          else
-            send_stream(conn, transformed, format)
-          end
 
-        {:error, msg} ->
-          send_error(
-            conn,
-            400,
-            %{error: msg},
-            status_callbacks
-          )
-      end
-    else
       {:file_exists, false} ->
         send_error(
           conn,
