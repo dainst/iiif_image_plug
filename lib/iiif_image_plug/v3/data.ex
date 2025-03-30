@@ -36,14 +36,15 @@ defmodule IIIFImagePlug.V3.Data do
           last_page = page_count - 1
 
           width = Image.width(file)
+          height = Image.height(file)
 
           0..last_page
-          |> Enum.map(fn page ->
-            {:ok, page_image} = Image.new_from_file(path, page: page)
+          |> Enum.map(fn page_count ->
+            {:ok, page_image} = Image.new_from_file(path, page: page_count)
 
             page_width = Image.width(page_image)
-
-            {page_image, %Scaling{scale: page_width / width}}
+            page_height = Image.height(page_image)
+            {page_image, %Scaling{scale: page_width / width, vscale: page_height / height}}
           end)
         else
           []
@@ -124,8 +125,8 @@ defmodule IIIFImagePlug.V3.Data do
        )
        when is_list(pages) do
     pages
-    |> Stream.filter(fn {_page, %Size.Scaling{scale: page_scale}} ->
-      requested_scale < page_scale
+    |> Stream.filter(fn {_page, %Size.Scaling{scale: page_scale, vscale: page_vscale}} ->
+      requested_scale < page_scale and requested_vscale < page_vscale
     end)
     |> Enum.min_by(
       fn {_page, %Size.Scaling{scale: scale}} ->
