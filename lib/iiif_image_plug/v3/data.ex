@@ -108,11 +108,11 @@ defmodule IIIFImagePlug.V3.Data do
   defp page_optimize(
          _area,
          %Scaling{scale: 1, vscale: nil},
-         base_image,
-         _base_image_transform,
+         _base_image,
+         base_image_transform,
          _pages
        ) do
-    base_image
+    base_image_transform
   end
 
   defp page_optimize(
