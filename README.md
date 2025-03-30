@@ -1,4 +1,4 @@
-![CI status](https://github.com/dainst/iiif_image_plug/actions/workflows/ci.yml/badge.svg)
+[![CI status](https://github.com/dainst/iiif_image_plug/actions/workflows/ci.yml/badge.svg)](https://github.com/dainst/iiif_image_plug/actions/workflows/ci.yml)
 
 # IIIF Image Plug
 
