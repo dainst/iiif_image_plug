@@ -6,10 +6,11 @@ defmodule IIIFImagePlug.V3Test do
   import ExUnit.CaptureLog
 
   @opts DevServerPlug.init([])
-  @sample_image_name "bentheim_mill.jpg"
+  @sample_jpg_name "bentheim_mill.jpg"
+  @sample_pyramid_tif_name "bentheim_mill_pyramid.tif"
 
   test "returns the info.json for the sample image image" do
-    conn = conn(:get, "/#{@sample_image_name}/info.json")
+    conn = conn(:get, "/#{@sample_jpg_name}/info.json")
 
     conn = DevServerPlug.call(conn, @opts)
 
@@ -84,7 +85,7 @@ defmodule IIIFImagePlug.V3Test do
   @paths_root "test/images/test_paths"
 
   describe "image data endpoint" do
-    test "returns the image data of the sample image" do
+    test "returns the correct image data of the sample jpg image" do
       File.ls!(@paths_root)
       |> Enum.map(fn region ->
         File.ls!("#{@paths_root}/#{region}")
@@ -103,7 +104,45 @@ defmodule IIIFImagePlug.V3Test do
       |> List.flatten()
       # |> IO.inspect()
       |> Enum.each(fn path ->
-        conn = conn(:get, "/#{@sample_image_name}/#{path}")
+        conn = conn(:get, "/#{@sample_jpg_name}/#{path}")
+
+        conn = DevServerPlug.call(conn, @opts)
+
+        if String.ends_with?(path, "tif") do
+          assert conn.state == :sent
+        else
+          assert conn.state == :chunked
+        end
+
+        assert conn.status == 200
+
+        {:ok, from_file} = Image.open("#{@paths_root}/#{path}")
+        {:ok, from_response} = Image.from_binary(conn.resp_body)
+
+        assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+      end)
+    end
+
+    test "returns the correct image data of the sample pyramid tif image" do
+      File.ls!(@paths_root)
+      |> Enum.map(fn region ->
+        File.ls!("#{@paths_root}/#{region}")
+        |> Enum.map(fn size ->
+          File.ls!("#{@paths_root}/#{region}/#{size}")
+          |> Enum.map(fn rotation ->
+            File.ls!("#{@paths_root}/#{region}/#{size}/#{rotation}")
+            |> Enum.map(fn quality_and_format ->
+              "#{region}/#{size}/#{rotation}/#{quality_and_format}"
+            end)
+          end)
+          |> List.flatten()
+        end)
+        |> List.flatten()
+      end)
+      |> List.flatten()
+      # |> IO.inspect()
+      |> Enum.each(fn path ->
+        conn = conn(:get, "/#{@sample_pyramid_tif_name}/#{path}")
 
         conn = DevServerPlug.call(conn, @opts)
 
@@ -139,7 +178,7 @@ defmodule IIIFImagePlug.V3Test do
     end
 
     test "returns 400 for invalid parameters" do
-      conn = conn(:get, "/#{@sample_image_name}/nope/max/0/default.jpg")
+      conn = conn(:get, "/#{@sample_jpg_name}/nope/max/0/default.jpg")
 
       conn = DevServerPlug.call(conn, @opts)
 
@@ -163,7 +202,7 @@ defmodule IIIFImagePlug.V3Test do
     end
 
     test "returns 400 for unsupported quality or format" do
-      conn = conn(:get, "/#{@sample_image_name}/full/max/0/default.txt")
+      conn = conn(:get, "/#{@sample_jpg_name}/full/max/0/default.txt")
 
       conn = DevServerPlug.call(conn, @opts)
       assert conn.state == :sent
