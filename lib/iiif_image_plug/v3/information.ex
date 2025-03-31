@@ -1,9 +1,11 @@
 defmodule IIIFImagePlug.V3.Information do
+  alias Plug.Conn
   alias Vix.Vips.Image
   alias IIIFImagePlug.V3.Settings
 
   def evaluate(
         identifier,
+        %Conn{} = conn,
         %Settings{
           identifier_to_path_callback: path_callback,
           identifier_to_rights_callback: rights_callback,
@@ -21,12 +23,7 @@ defmodule IIIFImagePlug.V3.Information do
         :ok,
         %{
           "@context": "http://iiif.io/api/image/3/context.json",
-          id:
-            "#{settings.scheme}://#{settings.host}#{if settings.port do
-              ":#{settings.port}"
-            else
-              ""
-            end}#{settings.prefix}/#{identifier}",
+          id: "#{construct_id_url(conn)}/#{identifier}",
           type: "ImageServer3",
           protocol: "http://iiif.io/api/image",
           width: Image.width(file),
@@ -61,6 +58,14 @@ defmodule IIIFImagePlug.V3.Information do
     else
       error -> error
     end
+  end
+
+  defp construct_id_url(%Conn{} = conn) do
+    "#{conn.scheme}://#{conn.host}#{if conn.port do
+      ":#{conn.port}"
+    else
+      ""
+    end}#{if conn.script_name != [], do: Path.join(conn.script_name)}"
   end
 
   defp maybe_add_callback_data(info, _identifier, nil, _key) do

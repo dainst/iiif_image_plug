@@ -7,10 +7,10 @@ defmodule DevServer do
 
   def start(_type, _args) do
     children = [
-      {Bandit, plug: DevServerPlug}
+      {Bandit, plug: DevServerRouter}
     ]
 
-    opts = [strategy: :one_for_one, name: DevServerPlug.Supervisor]
+    opts = [strategy: :one_for_one, name: DevServer.Supervisor]
 
     Logger.info("Starting dev server...")
     Supervisor.start_link(children, opts)

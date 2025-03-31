@@ -17,17 +17,8 @@ defmodule IIIFImagePlug.V3 do
 
   ## Options
 
-  ### `:scheme` (default: `:http`)
-  The scheme used to create the `id` image [information](https://iiif.io/api/image/3.0/#51-image-information-request) requests.
-
-  ### `:host` (default: `"localhost"`)
-  The host used to create the `id` image [information](https://iiif.io/api/image/3.0/#51-image-information-request) requests.
-
-  ### `:port` (default: `nil`)
-  The port used to create the `id` image [information](https://iiif.io/api/image/3.0/#51-image-information-request) requests.
-
-  ### `:prefix` (default: `""`)
-  The path prefix used to create the `id` image [information](https://iiif.io/api/image/3.0/#51-image-information-request) requests.
+  ### `:identifier_to_path_callback` required
+  An arity 1 callback function that resolves a given IIIF identifier to a file path (string).
 
   ### `:max_width` (default: `10000`)
   The maximum image width the plug will serve.
@@ -44,9 +35,6 @@ defmodule IIIFImagePlug.V3 do
   ### `:extra_formats` (default: `[:png, :webp, :tif]`)
   The [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your service can deliver. Note that TIF files
   have to be buffered before they are sent, so large images might cause issues.
-
-  ### `:identifier_to_path_callback` required
-  An arity 1 callback function that resolves a given IIIF identifier to a file path (string).
 
   ### `:identifier_to_rights_callback` (optional)
   An arity 1 callback function that returns a [rights](https://iiif.io/api/image/3.0/#56-rights) statement for a given identifier.
@@ -67,16 +55,12 @@ defmodule IIIFImagePlug.V3 do
 
   defmodule Settings do
     @enforce_keys [
-      :scheme,
-      :host,
-      :port,
-      :prefix,
+      :identifier_to_path_callback,
       :max_width,
       :max_height,
       :max_area,
       :preferred_formats,
       :extra_formats,
-      :identifier_to_path_callback,
       :identifier_to_rights_callback,
       :identifier_to_part_of_callback,
       :identifier_to_see_also_callback,
@@ -84,16 +68,12 @@ defmodule IIIFImagePlug.V3 do
       :status_callbacks
     ]
     defstruct [
-      :scheme,
-      :host,
-      :port,
-      :prefix,
+      :identifier_to_path_callback,
       :max_width,
       :max_height,
       :max_area,
       :preferred_formats,
       :extra_formats,
-      :identifier_to_path_callback,
       :identifier_to_rights_callback,
       :identifier_to_part_of_callback,
       :identifier_to_see_also_callback,
@@ -111,23 +91,14 @@ defmodule IIIFImagePlug.V3 do
 
   def init(opts) when is_map(opts) do
     %Settings{
-      scheme: opts[:scheme] || :http,
-      host: opts[:host] || "localhost",
-      port: opts[:port],
-      prefix:
-        if opts[:prefix] do
-          String.trim_trailing(opts[:prefix], "/")
-        else
-          ""
-        end,
+      identifier_to_path_callback:
+        opts[:identifier_to_path_callback] ||
+          raise("Missing callback used to construct file path from identifier."),
       max_width: opts[:max_width] || @default_max_width,
       max_height: opts[:max_height] || @default_max_height,
       max_area: opts[:max_area] || @default_max_area,
       preferred_formats: opts[:preferred_formats] || @default_preferred_format,
       extra_formats: opts[:extra_formats] || @default_extra_formats,
-      identifier_to_path_callback:
-        opts[:identifier_to_path_callback] ||
-          raise("Missing callback used to construct file path from identifier."),
       identifier_to_rights_callback: opts[:identifier_to_rights_callback],
       identifier_to_part_of_callback: opts[:identifier_to_part_of_callback],
       identifier_to_see_also_callback: opts[:identifier_to_see_also_callback],
@@ -140,7 +111,7 @@ defmodule IIIFImagePlug.V3 do
         %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
         %Settings{status_callbacks: status_callbacks} = settings
       ) do
-    case Information.evaluate(identifier, settings) do
+    case Information.evaluate(identifier, conn, settings) do
       {:ok, info} ->
         conn
         |> put_resp_content_type("application/ld+json")

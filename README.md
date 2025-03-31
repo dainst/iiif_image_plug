@@ -31,10 +31,6 @@ Assuming you want to serve IIIF in your plug based server at "/iiif/v3", add a f
   forward("/iiif/v3",
     to: IIIFImagePlug.V3,
     init_opts: %{
-      scheme: :http,
-      host: "localhost",
-      port: 4000,
-      prefix: "/iiif/v3",
       identifier_to_path_callback: &ImageStore.identifier_to_path/1
     }
   )
@@ -45,10 +41,6 @@ For [Phoenix](https://www.phoenixframework.org/) it would look slightly differen
 
 ```elixir
   forward("/iiif/v3", IIIFImagePlug.V3, %{
-    scheme: :http,
-    host: "localhost",
-    port: 4000,
-    prefix: "/api/image/iiif/v3",
     identifier_to_path_callback: &ImageStore.identifier_to_path/1
   })
 ```
@@ -64,8 +56,6 @@ The option `:identifier_to_path_callback` lets the plug map the IIIF [identifier
 ```
 
 A GET request `/iiif/v3/sample_image.jpg/info.json` would then cause the plug to look for an image file at `/mnt/my_app_images/sample_image.jpg` and return its metadata.
-
-The other options above `:scheme`, `:host`, `:port` and `:prefix` are used to generate the image's `id` field in its `info.json` (see IIIF [docs](https://iiif.io/api/image/3.0/#51-image-information-request)).
 
 For the complete list of plug options have a look at the module documentation.
 

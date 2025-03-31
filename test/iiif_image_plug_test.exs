@@ -5,14 +5,14 @@ defmodule IIIFImagePlug.V3Test do
   import Plug.Test
   import ExUnit.CaptureLog
 
-  @opts DevServerPlug.init([])
+  @opts DevServerRouter.init([])
   @sample_jpg_name "bentheim_mill.jpg"
   @sample_pyramid_tif_name "bentheim_mill_pyramid.tif"
 
   test "returns the info.json for the sample image image" do
     conn = conn(:get, "/#{@sample_jpg_name}/info.json")
 
-    conn = DevServerPlug.call(conn, @opts)
+    conn = DevServerRouter.call(conn, @opts)
 
     assert conn.state == :sent
     assert conn.status == 200
@@ -55,7 +55,7 @@ defmodule IIIFImagePlug.V3Test do
 
     conn = conn(:get, "/#{unknown_identifier}/info.json")
 
-    conn = DevServerPlug.call(conn, @opts)
+    conn = DevServerRouter.call(conn, @opts)
 
     assert conn.state == :sent
     assert conn.status == 404
@@ -74,7 +74,7 @@ defmodule IIIFImagePlug.V3Test do
 
     log =
       capture_log(fn ->
-        conn = DevServerPlug.call(conn, @opts)
+        conn = DevServerRouter.call(conn, @opts)
         assert conn.state == :sent
         assert conn.status == 500
       end)
@@ -106,7 +106,7 @@ defmodule IIIFImagePlug.V3Test do
       |> Enum.each(fn path ->
         conn = conn(:get, "/#{@sample_jpg_name}/#{path}")
 
-        conn = DevServerPlug.call(conn, @opts)
+        conn = DevServerRouter.call(conn, @opts)
 
         if String.ends_with?(path, "tif") do
           assert conn.state == :sent
@@ -144,7 +144,7 @@ defmodule IIIFImagePlug.V3Test do
       |> Enum.each(fn path ->
         conn = conn(:get, "/#{@sample_pyramid_tif_name}/#{path}")
 
-        conn = DevServerPlug.call(conn, @opts)
+        conn = DevServerRouter.call(conn, @opts)
 
         if String.ends_with?(path, "tif") do
           assert conn.state == :sent
@@ -165,7 +165,7 @@ defmodule IIIFImagePlug.V3Test do
       unknown_identifier = "does_not_exist.jpg"
       conn = conn(:get, "/#{unknown_identifier}/full/max/0/default.jpg")
 
-      conn = DevServerPlug.call(conn, @opts)
+      conn = DevServerRouter.call(conn, @opts)
 
       assert conn.state == :sent
       assert conn.status == 404
@@ -180,7 +180,7 @@ defmodule IIIFImagePlug.V3Test do
     test "returns 400 for invalid parameters" do
       conn = conn(:get, "/#{@sample_jpg_name}/nope/max/0/default.jpg")
 
-      conn = DevServerPlug.call(conn, @opts)
+      conn = DevServerRouter.call(conn, @opts)
 
       assert conn.state == :sent
       assert conn.status == 400
@@ -193,7 +193,7 @@ defmodule IIIFImagePlug.V3Test do
 
       log =
         capture_log(fn ->
-          conn = DevServerPlug.call(conn, @opts)
+          conn = DevServerRouter.call(conn, @opts)
           assert conn.state == :sent
           assert conn.status == 500
         end)
@@ -204,7 +204,7 @@ defmodule IIIFImagePlug.V3Test do
     test "returns 400 for unsupported quality or format" do
       conn = conn(:get, "/#{@sample_jpg_name}/full/max/0/default.txt")
 
-      conn = DevServerPlug.call(conn, @opts)
+      conn = DevServerRouter.call(conn, @opts)
       assert conn.state == :sent
       assert conn.status == 400
 
