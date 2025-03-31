@@ -65,7 +65,7 @@ defmodule IIIFImagePlug.V3.Information do
       ":#{conn.port}"
     else
       ""
-    end}#{if conn.script_name != [], do: Path.join(conn.script_name)}"
+    end}#{if conn.script_name != [], do: Path.join(["/"] ++ conn.script_name)}"
   end
 
   defp maybe_add_callback_data(info, _identifier, nil, _key) do
