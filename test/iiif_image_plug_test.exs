@@ -6,8 +6,10 @@ defmodule IIIFImagePlug.V3Test do
   import ExUnit.CaptureLog
 
   @opts DevServerRouter.init([])
+
   @sample_jpg_name "bentheim_mill.jpg"
   @sample_pyramid_tif_name "bentheim_mill_pyramid.tif"
+  @paths_root "test/images/test_paths"
 
   test "returns the info.json for the sample image image" do
     conn = conn(:get, "/#{@sample_jpg_name}/info.json")
@@ -82,29 +84,12 @@ defmodule IIIFImagePlug.V3Test do
     assert log =~ "File matching identifier '#{unsupported}' could not be opened as an image."
   end
 
-  @paths_root "test/images/test_paths"
-
   describe "image data endpoint" do
     test "returns the correct image data of the sample jpg image" do
-      File.ls!(@paths_root)
-      |> Enum.map(fn region ->
-        File.ls!("#{@paths_root}/#{region}")
-        |> Enum.map(fn size ->
-          File.ls!("#{@paths_root}/#{region}/#{size}")
-          |> Enum.map(fn rotation ->
-            File.ls!("#{@paths_root}/#{region}/#{size}/#{rotation}")
-            |> Enum.map(fn quality_and_format ->
-              "#{region}/#{size}/#{rotation}/#{quality_and_format}"
-            end)
-          end)
-          |> List.flatten()
-        end)
-        |> List.flatten()
-      end)
-      |> List.flatten()
+      generate_path_list()
       # |> IO.inspect()
       |> Enum.each(fn path ->
-        conn = conn(:get, "/#{@sample_jpg_name}/#{path}")
+        conn = conn(:get, "/#{@sample_jpg_name}/#{path}" |> URI.encode())
 
         conn = DevServerRouter.call(conn, @opts)
 
@@ -124,25 +109,10 @@ defmodule IIIFImagePlug.V3Test do
     end
 
     test "returns the correct image data of the sample pyramid tif image" do
-      File.ls!(@paths_root)
-      |> Enum.map(fn region ->
-        File.ls!("#{@paths_root}/#{region}")
-        |> Enum.map(fn size ->
-          File.ls!("#{@paths_root}/#{region}/#{size}")
-          |> Enum.map(fn rotation ->
-            File.ls!("#{@paths_root}/#{region}/#{size}/#{rotation}")
-            |> Enum.map(fn quality_and_format ->
-              "#{region}/#{size}/#{rotation}/#{quality_and_format}"
-            end)
-          end)
-          |> List.flatten()
-        end)
-        |> List.flatten()
-      end)
-      |> List.flatten()
+      generate_path_list()
       # |> IO.inspect()
       |> Enum.each(fn path ->
-        conn = conn(:get, "/#{@sample_pyramid_tif_name}/#{path}")
+        conn = conn(:get, "/#{@sample_pyramid_tif_name}/#{path}" |> URI.encode())
 
         conn = DevServerRouter.call(conn, @opts)
 
@@ -214,5 +184,24 @@ defmodule IIIFImagePlug.V3Test do
 
       assert %{"reason" => ^msg} = response
     end
+  end
+
+  defp generate_path_list() do
+    File.ls!(@paths_root)
+    |> Enum.map(fn region ->
+      File.ls!("#{@paths_root}/#{region}")
+      |> Enum.map(fn size ->
+        File.ls!("#{@paths_root}/#{region}/#{size}")
+        |> Enum.map(fn rotation ->
+          File.ls!("#{@paths_root}/#{region}/#{size}/#{rotation}")
+          |> Enum.map(fn quality_and_format ->
+            "#{region}/#{size}/#{rotation}/#{quality_and_format}"
+          end)
+        end)
+        |> List.flatten()
+      end)
+      |> List.flatten()
+    end)
+    |> List.flatten()
   end
 end
