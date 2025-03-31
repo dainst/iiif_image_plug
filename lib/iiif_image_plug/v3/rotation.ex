@@ -1,10 +1,12 @@
 defmodule IIIFImagePlug.V3.Rotation do
+  @moduledoc false
   alias Vix.Vips.{
     Operation,
     Image
   }
 
   defmodule Rotation do
+    @moduledoc false
     @enforce_keys [:degrees]
     defstruct [:degrees, flip?: false]
   end

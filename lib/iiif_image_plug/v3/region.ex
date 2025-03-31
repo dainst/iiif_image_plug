@@ -1,5 +1,7 @@
 defmodule IIIFImagePlug.V3.Region do
+  @moduledoc false
   defmodule ExtractArea do
+    @moduledoc false
     @enforce_keys [:left, :top, :width, :height]
     defstruct [:left, :top, :width, :height]
   end

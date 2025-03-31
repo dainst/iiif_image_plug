@@ -1,4 +1,6 @@
 defmodule IIIFImagePlug.V3.Quality do
+  @moduledoc false
+
   alias Vix.Vips.{
     Operation,
     Image

@@ -1,10 +1,12 @@
 defmodule IIIFImagePlug.V3.Size do
+  @moduledoc false
   alias Vix.Vips.Operation
   alias Vix.Vips.Image
 
   alias IIIFImagePlug.V3.Settings
 
   defmodule Scaling do
+    @moduledoc false
     @enforce_keys [:scale]
     defstruct [:scale, :vscale]
   end
