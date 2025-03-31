@@ -1,5 +1,8 @@
 [![CI status](https://github.com/dainst/iiif_image_plug/actions/workflows/ci.yml/badge.svg)](https://github.com/dainst/iiif_image_plug/actions/workflows/ci.yml)
 
+- [hex](https://hex.pm/packages/iiif_image_plug)
+- [docs](https://hexdocs.pm/iiif_image_plug/)
+
 # IIIF Image Plug
 
 An Elixir [plug](https://hexdocs.pm/plug/readme.html) implementing the _International Image Interoperability Framework_ ([IIIF](https://iiif.io/)) image API specification. 
