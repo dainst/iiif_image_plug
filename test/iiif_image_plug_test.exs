@@ -52,6 +52,21 @@ defmodule IIIFImagePlug.V3Test do
            } = response
   end
 
+  test "returns the correct info.json on non-root paths for the sample image image" do
+    conn = conn(:get, "/some/nested/route/#{@sample_jpg_name}/info.json")
+
+    conn = DevServerRouter.call(conn, @opts)
+
+    assert conn.state == :sent
+    assert conn.status == 200
+
+    response = Jason.decode!(conn.resp_body)
+
+    assert %{
+             "id" => "http://localhost:4000/some/nested/route/bentheim_mill.jpg"
+           } = response
+  end
+
   test "returns 404 for unknown identifier" do
     unknown_identifier = "nope.jpg"
 
