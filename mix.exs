@@ -20,7 +20,8 @@ defmodule IIIFImagePlug.MixProject do
       description: "An Elixir Plug implementing the IIIF image API specification.",
       deps: deps(),
       package: package(),
-      docs: docs()
+      docs: docs(),
+      aliases: aliases()
     ]
   end
 
@@ -73,5 +74,15 @@ defmodule IIIFImagePlug.MixProject do
         LICENSE: [title: "License"]
       ]
     ]
+  end
+
+  defp aliases do
+    [docs: ["docs", &copy_doc_images/1]]
+  end
+
+  defp copy_doc_images(_) do
+    # Images can not be added to the `:extras` in `docs()`. Instead we have to copy them
+    # manually to the `doc/` directory generated when running `mix hex.publish`.
+    File.cp!("additional_docs/image_pyramid.png", "doc/image_pyramid.png")
   end
 end
