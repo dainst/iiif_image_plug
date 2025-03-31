@@ -148,7 +148,14 @@ defmodule IIIFImagePlug.V3 do
         } =
           settings
       ) do
-    case Data.process(identifier, region, size, rotation, quality_and_format, settings) do
+    case Data.process(
+           identifier,
+           URI.decode(region),
+           URI.decode(size),
+           URI.decode(rotation),
+           quality_and_format,
+           settings
+         ) do
       {%Image{} = image, format} ->
         if format == "tif" do
           send_buffered(conn, image, format)
