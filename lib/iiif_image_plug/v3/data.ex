@@ -1,4 +1,5 @@
 defmodule IIIFImagePlug.V3.Data do
+  alias Vix.Vips.Operation
   alias IIIFImagePlug.V3.Size.Scaling
   alias IIIFImagePlug.V3.Region.ExtractArea
   alias IIIFImagePlug.V3.Quality
@@ -50,13 +51,40 @@ defmodule IIIFImagePlug.V3.Data do
           []
         end
 
-      case pipeline_full(file, region, size, rotation, quality, pages, settings) do
+      cond do
+        region == "full" and pages == [] ->
+          %Scaling{scale: scale, vscale: vscale} = Size.parse(file, size, settings)
+
+          scaled_width =
+            (Image.width(file) * scale) |> trunc() |> IO.inspect(label: "scaled width")
+
+          scaled_height =
+            if vscale != nil do
+              (Image.height(file) * vscale) |> trunc() |> IO.inspect(label: "scaled height")
+            end
+
+          applied_thumbnail =
+            if scaled_height do
+              Operation.thumbnail!(path, scaled_width, height: scaled_height)
+            else
+              Operation.thumbnail!(path, scaled_width)
+            end
+
+          pipeline_rotation_and_quality(applied_thumbnail, rotation, quality)
+
+        true ->
+          pipeline_full(file, region, size, rotation, quality, pages, settings)
+      end
+      |> case do
         %Image{} = image ->
           {image, format}
 
         error ->
           error
       end
+    else
+      error ->
+        error
     end
   end
 

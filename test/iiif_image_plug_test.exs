@@ -104,6 +104,7 @@ defmodule IIIFImagePlug.V3Test do
       generate_path_list()
       # |> IO.inspect()
       |> Enum.each(fn path ->
+        IO.inspect(path)
         conn = conn(:get, "/#{@sample_jpg_name}/#{path}" |> URI.encode())
 
         conn = DevServerRouter.call(conn, @opts)
