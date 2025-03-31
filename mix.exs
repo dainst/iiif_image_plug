@@ -10,9 +10,9 @@ defmodule IIIFImagePlug.MixProject do
       start_permanent: Mix.env() == :prod,
       test_coverage: [
         ignore_modules: [
-          DevCallbacks,
+          DevServerHelper,
           DevServer,
-          DevServerPlug
+          DevServerRouter
         ]
       ],
       name: "IIIFImagePlug",

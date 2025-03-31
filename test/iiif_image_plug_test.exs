@@ -79,9 +79,7 @@ defmodule IIIFImagePlug.V3Test do
 
     response = Jason.decode!(conn.resp_body)
 
-    msg = "No file with identifier '#{unknown_identifier}'."
-
-    assert %{"reason" => ^msg} = response
+    assert %{"error" => "no_file"} = response
   end
 
   test "returns 500 when attempting to open unsupported file and error gets logged" do
@@ -157,9 +155,7 @@ defmodule IIIFImagePlug.V3Test do
 
       response = Jason.decode!(conn.resp_body)
 
-      msg = "No file with identifier '#{unknown_identifier}'."
-
-      assert %{"reason" => ^msg} = response
+      assert %{"error" => "no_file"} = response
     end
 
     test "returns 400 for invalid parameters" do
@@ -195,9 +191,7 @@ defmodule IIIFImagePlug.V3Test do
 
       response = Jason.decode!(conn.resp_body)
 
-      msg = "Could not find parse valid quality and format from 'default.txt'."
-
-      assert %{"reason" => ^msg} = response
+      assert %{"error" => "invalid_quality_and_format"} = response
     end
   end
 

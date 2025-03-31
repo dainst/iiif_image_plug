@@ -111,23 +111,21 @@ defmodule IIIFImagePlug.V3 do
         %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
         %Settings{status_callbacks: status_callbacks} = settings
       ) do
-    case Information.evaluate(identifier, conn, settings) do
+    case Information.get(identifier, conn, settings) do
       {:ok, info} ->
         conn
         |> put_resp_content_type("application/ld+json")
         |> send_resp(200, Jason.encode!(info))
 
-      {:file_exists, false} ->
+      {:error, :no_file} ->
         send_error(
           conn,
           404,
-          %{
-            reason: "No file with identifier '#{identifier}'."
-          },
+          %{error: :no_file},
           status_callbacks
         )
 
-      {:file_opened, _} ->
+      {:error, :no_image_file} ->
         Logger.error("File matching identifier '#{identifier}' could not be opened as an image.")
 
         send_error(
@@ -148,7 +146,7 @@ defmodule IIIFImagePlug.V3 do
         } =
           settings
       ) do
-    case Data.process(
+    case Data.get(
            identifier,
            URI.decode(region),
            URI.decode(size),
@@ -163,25 +161,15 @@ defmodule IIIFImagePlug.V3 do
           send_stream(conn, image, format)
         end
 
-      {:error, msg} ->
-        send_error(
-          conn,
-          400,
-          %{error: msg},
-          status_callbacks
-        )
-
-      {:file_exists, false} ->
+      {:error, :no_file} ->
         send_error(
           conn,
           404,
-          %{
-            reason: "No file with identifier '#{identifier}'."
-          },
+          %{error: :no_file},
           status_callbacks
         )
 
-      {:file_opened, _} ->
+      {:error, :no_image_file} ->
         Logger.error("File matching identifier '#{identifier}' could not be opened as an image.")
 
         send_error(
@@ -191,13 +179,11 @@ defmodule IIIFImagePlug.V3 do
           status_callbacks
         )
 
-      {:quality_and_format_parsed, _} ->
+      {:error, msg} ->
         send_error(
           conn,
           400,
-          %{
-            reason: "Could not find parse valid quality and format from '#{quality_and_format}'."
-          },
+          %{error: msg},
           status_callbacks
         )
     end

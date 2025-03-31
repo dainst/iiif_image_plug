@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 
+
+Removed the `:scheme`, `:host`, `:port` and `:prefix` options, those are now evaluated directly from the [`%Plug.Conn{}`](https://hexdocs.pm/plug/Plug.Conn.html).
+
 ## 0.2.0
 
 Added optimization for pyramid tiffs:

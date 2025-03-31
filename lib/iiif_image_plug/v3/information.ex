@@ -3,7 +3,19 @@ defmodule IIIFImagePlug.V3.Information do
   alias Vix.Vips.Image
   alias IIIFImagePlug.V3.Settings
 
-  def evaluate(
+  @moduledoc """
+  Produces image metadata (info.json).
+  """
+
+  @doc """
+  Get the IIIF `info.json` for the image defined by `identifier` with respect to the plug's settings.
+
+  Returns
+  - `info` as an Elixir map on success.
+  - `{:error, :no_file}` if the identifier did not point to a file.
+  - `{:error, :no_image_file}` if the identifier did not point to a file.
+  """
+  def get(
         identifier,
         %Conn{} = conn,
         %Settings{
@@ -56,7 +68,11 @@ defmodule IIIFImagePlug.V3.Information do
         |> maybe_add_sizes(file, path)
       }
     else
-      error -> error
+      {:file_exists, false} ->
+        {:error, :no_file}
+
+      {:file_opened, _} ->
+        {:error, :no_image_file}
     end
   end
 

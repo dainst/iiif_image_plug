@@ -8,12 +8,25 @@ defmodule IIIFImagePlug.V3.Data do
   alias IIIFImagePlug.V3.Settings
   alias Vix.Vips.Image
 
-  def process(
+  @moduledoc """
+  Produces image data based on the given IIIF parameters and Plug settings.
+  """
+
+  @doc """
+  Get a transformed version of the image defined by `identifier` and the other provided parameters,
+  validated against the plug's settings.
+
+  Returns
+  - `{%Vix.Vips.Image{}, format}` on success, where format is one of the preferred or extra format atoms defined
+  in the plug settings.
+  - `{:error, reason}` if a parameter was invalid.
+  """
+  def get(
         identifier,
-        region,
-        size,
-        rotation,
-        quality_and_format,
+        region_param,
+        size_param,
+        rotation_param,
+        quality_and_format_param,
         %Settings{
           identifier_to_path_callback: path_callback
         } = settings
@@ -23,7 +36,7 @@ defmodule IIIFImagePlug.V3.Data do
     with {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},
          {:quality_and_format_parsed, %{quality: quality, format: format}} <-
-           {:quality_and_format_parsed, Quality.parse(quality_and_format, settings)} do
+           {:quality_and_format_parsed, Quality.parse(quality_and_format_param, settings)} do
       page_count =
         try do
           Image.n_pages(file)
@@ -50,13 +63,22 @@ defmodule IIIFImagePlug.V3.Data do
           []
         end
 
-      case pipeline_full(file, region, size, rotation, quality, pages, settings) do
+      case pipeline_full(file, region_param, size_param, rotation_param, quality, pages, settings) do
         %Image{} = image ->
           {image, format}
 
         error ->
           error
       end
+    else
+      {:file_exists, false} ->
+        {:error, :no_file}
+
+      {:file_opened, _} ->
+        {:error, :no_image_file}
+
+      {:quality_and_format_parsed, _} ->
+        {:error, :invalid_quality_and_format}
     end
   end
 
