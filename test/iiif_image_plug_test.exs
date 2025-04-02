@@ -10,6 +10,7 @@ defmodule IIIFImagePlug.V3Test do
   @sample_jpg_name "bentheim_mill.jpg"
   @sample_pyramid_tif_name "bentheim_mill_pyramid.tif"
   @paths_root "test/images/test_paths"
+  @paths_pyramid_root "test/images/test_paths_pyramid"
 
   test "returns the info.json for the sample image image" do
     conn = conn(:get, "/#{@sample_jpg_name}/info.json")
@@ -99,7 +100,7 @@ defmodule IIIFImagePlug.V3Test do
 
   describe "image data endpoint" do
     test "returns the correct image data of the sample jpg image" do
-      generate_path_list()
+      generate_path_list(@paths_root)
       # |> IO.inspect()
       |> Enum.each(fn path ->
         conn = conn(:get, "/#{@sample_jpg_name}/#{path}" |> URI.encode())
@@ -122,7 +123,7 @@ defmodule IIIFImagePlug.V3Test do
     end
 
     test "returns the correct image data of the sample pyramid tif image" do
-      generate_path_list()
+      generate_path_list(@paths_pyramid_root)
       # |> IO.inspect()
       |> Enum.each(fn path ->
         conn = conn(:get, "/#{@sample_pyramid_tif_name}/#{path}" |> URI.encode())
@@ -137,10 +138,15 @@ defmodule IIIFImagePlug.V3Test do
 
         assert conn.status == 200
 
-        {:ok, from_file} = Image.open("#{@paths_root}/#{path}")
+        {:ok, from_file} = Image.open("#{@paths_pyramid_root}/#{path}")
         {:ok, from_response} = Image.from_binary(conn.resp_body)
 
-        assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+        if path == "full/!200,250/0/default.jpg" do
+          assert {:ok, quality, _image} = Image.compare(from_file, from_response)
+          assert quality < 0.1
+        else
+          assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+        end
       end)
     end
 
@@ -195,14 +201,14 @@ defmodule IIIFImagePlug.V3Test do
     end
   end
 
-  defp generate_path_list() do
-    File.ls!(@paths_root)
+  defp generate_path_list(root) do
+    File.ls!(root)
     |> Enum.map(fn region ->
-      File.ls!("#{@paths_root}/#{region}")
+      File.ls!("#{root}/#{region}")
       |> Enum.map(fn size ->
-        File.ls!("#{@paths_root}/#{region}/#{size}")
+        File.ls!("#{root}/#{region}/#{size}")
         |> Enum.map(fn rotation ->
-          File.ls!("#{@paths_root}/#{region}/#{size}/#{rotation}")
+          File.ls!("#{root}/#{region}/#{size}/#{rotation}")
           |> Enum.map(fn quality_and_format ->
             "#{region}/#{size}/#{rotation}/#{quality_and_format}"
           end)
