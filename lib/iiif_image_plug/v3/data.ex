@@ -148,7 +148,11 @@ defmodule IIIFImagePlug.V3.Data do
        when is_list(pages) do
     pages
     |> Stream.filter(fn {_page, %Size.Scaling{scale: page_scale, vscale: page_vscale}} ->
-      requested_scale < page_scale and requested_vscale < page_vscale
+      if requested_vscale do
+        requested_scale < page_scale and requested_vscale < page_vscale
+      else
+        requested_scale < page_scale
+      end
     end)
     |> Enum.min_by(
       fn {_page, %Size.Scaling{scale: scale}} ->
@@ -157,7 +161,7 @@ defmodule IIIFImagePlug.V3.Data do
       fn -> nil end
     )
     |> case do
-      {page, %Size.Scaling{scale: page_scale}} ->
+      {page, %Size.Scaling{scale: page_scale, vscale: page_vscale}} ->
         adjusted_region =
           if not full_region_requested?(base_image, requested_area) do
             adjusted_area =
@@ -178,7 +182,7 @@ defmodule IIIFImagePlug.V3.Data do
 
         adjusted_vscale =
           if requested_vscale do
-            requested_vscale / page_scale
+            requested_vscale / page_vscale
           else
             nil
           end
