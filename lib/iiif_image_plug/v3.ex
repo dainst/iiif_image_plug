@@ -195,8 +195,8 @@ defmodule IIIFImagePlug.V3 do
       ) do
     send_error(
       conn,
-      400,
-      %{reason: "Invalid request scheme.", path_info: conn.path_info},
+      404,
+      %{reason: "Unknown path.", path_info: conn.path_info},
       callbacks
     )
   end
