@@ -6,4 +6,4 @@ source .venv/bin/activate
 
 pip install iiif-validator
 
-iiif-validate.py -s localhost:4000 -i official_test_image.png --version=3.0 -v
+iiif-validate.py -s localhost:4000 -i official_test_image.png --version=3.0 --level=2 -v
