@@ -48,7 +48,7 @@ defmodule IIIFImagePlug.V3Test do
              "profile" => "level2",
              "protocol" => "http://iiif.io/api/image",
              "rights" => "https://creativecommons.org/publicdomain/zero/1.0/",
-             "type" => "ImageServer3",
+             "type" => "ImageService3",
              "width" => 500
            } = response
   end
