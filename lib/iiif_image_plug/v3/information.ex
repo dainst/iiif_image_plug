@@ -36,7 +36,7 @@ defmodule IIIFImagePlug.V3.Information do
         %{
           "@context": "http://iiif.io/api/image/3/context.json",
           id: "#{construct_id_url(conn)}/#{identifier}",
-          type: "ImageServer3",
+          type: "ImageService3",
           protocol: "http://iiif.io/api/image",
           width: Image.width(file),
           height: Image.height(file),
