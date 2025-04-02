@@ -3,6 +3,8 @@ defmodule IIIFImagePlug.V3 do
 
   import Plug.Conn
 
+  alias Plug.Conn
+
   alias Vix.Vips.Image
 
   alias IIIFImagePlug.V3.{
@@ -107,6 +109,15 @@ defmodule IIIFImagePlug.V3 do
     }
   end
 
+  def call(%Plug.Conn{path_info: [identifier]} = conn, _settings) do
+    conn
+    |> resp(:found, "")
+    |> put_resp_header(
+      "location",
+      "#{construct_id_url(conn)}/#{identifier}/info.json"
+    )
+  end
+
   def call(
         %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
         %Settings{status_callbacks: status_callbacks} = settings
@@ -199,6 +210,14 @@ defmodule IIIFImagePlug.V3 do
       %{reason: "Unknown path.", path_info: conn.path_info},
       callbacks
     )
+  end
+
+  def construct_id_url(%Conn{} = conn) do
+    "#{conn.scheme}://#{conn.host}#{if conn.port do
+      ":#{conn.port}"
+    else
+      ""
+    end}#{if conn.script_name != [], do: Path.join(["/"] ++ conn.script_name)}"
   end
 
   defp send_buffered(conn, %Image{} = image, format) do

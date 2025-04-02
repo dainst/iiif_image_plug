@@ -1,6 +1,8 @@
 defmodule IIIFImagePlug.V3.Information do
   alias Plug.Conn
   alias Vix.Vips.Image
+
+  alias IIIFImagePlug.V3
   alias IIIFImagePlug.V3.Settings
 
   @moduledoc """
@@ -35,7 +37,7 @@ defmodule IIIFImagePlug.V3.Information do
         :ok,
         %{
           "@context": "http://iiif.io/api/image/3/context.json",
-          id: "#{construct_id_url(conn)}/#{identifier}",
+          id: "#{V3.construct_id_url(conn)}/#{identifier}",
           type: "ImageService3",
           protocol: "http://iiif.io/api/image",
           width: Image.width(file),
@@ -74,14 +76,6 @@ defmodule IIIFImagePlug.V3.Information do
       {:file_opened, _} ->
         {:error, :no_image_file}
     end
-  end
-
-  defp construct_id_url(%Conn{} = conn) do
-    "#{conn.scheme}://#{conn.host}#{if conn.port do
-      ":#{conn.port}"
-    else
-      ""
-    end}#{if conn.script_name != [], do: Path.join(["/"] ++ conn.script_name)}"
   end
 
   defp maybe_add_callback_data(info, _identifier, nil, _key) do
