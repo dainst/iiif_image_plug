@@ -5,6 +5,7 @@ defmodule DevServerRouter do
 
   @moduledoc false
 
+  plug(CORSPlug, origin: ["*"])
   plug(:set_url_and_port)
   plug(:match)
   plug(:dispatch)
