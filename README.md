@@ -21,7 +21,7 @@ by adding `iiif_image_plug` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:iiif_image_plug, "~> 0.3.0"}
+    {:iiif_image_plug, "~> 0.3.1"}
   ]
 end
 ```

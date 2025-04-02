@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.3.0 
+## 0.3.1
+
+Fixed error with pyramid page optimization was not applied if no `vscale` was requested. This caused a fallback to full image processing.
+
+## 0.3.0
 
 Removed the `:scheme`, `:host`, `:port` and `:prefix` options, those are now evaluated directly from the [`%Plug.Conn{}`](https://hexdocs.pm/plug/Plug.Conn.html).
 
