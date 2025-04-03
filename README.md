@@ -83,6 +83,12 @@ end
 (..)
 ```
 
+### Testing your endpoint 
+
+Because this plug is just a library and only part of your overall application, you might want to test your service's IIIF compliance against the official validator:
+- https://iiif.io/api/image/validator (web based)
+- https://github.com/IIIF/image-validator (repository with python based validator)
+
 ## Development
 
 This repository comes with a minimalistic server, run the server with:
