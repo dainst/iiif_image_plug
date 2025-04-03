@@ -40,7 +40,7 @@ If you want to allow the user to request tif files, be aware these can not be st
 
 This plug aims to implement the "level 2" [compliance](https://iiif.io/api/image/3.0/compliance) for the IIIF image API. 
 
-If you only want to provide "level 0" data (the most basic required for tiled viewers), you can preprocess your input images beforehand and serve them as static assets (without this library). There exist some resources on how to do [this](https://training.iiif.io/dhsi/day-one/level-0-static.html).
+If you only want to provide "level 0" data (the most basic required for tiled viewers), you can preprocess your input images beforehand and serve them as static assets (without this library). There exist several [resources](https://training.iiif.io/dhsi/day-one/level-0-static.html) on how to do this.
 
 Working with vips, you can run:
 
@@ -48,7 +48,7 @@ Working with vips, you can run:
 vips dzsave input.jpg preprocessed_out --layout iiif3 --depth onetile --overlap 0 --suffix .jpg
 ```
 
-This will create a directory "preprocessed_out" that contains a bunch of directories (each corresponding to a possible "region" parameter) and a `info.json` file. These can be served as static assets (you would need to update the "id" value to match your service):
+This will create a directory "preprocessed_out" that contains a bunch of directories (each corresponding to a possible "region" parameter) and a `info.json` file. These can be served as static assets. You would need to update the "id" value to match your service:
 
 ```json
 {
