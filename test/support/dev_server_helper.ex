@@ -1,6 +1,14 @@
 defmodule DevServerHelper do
   @moduledoc false
 
+  def get_host() do
+    "localhost"
+  end
+
+  def get_port() do
+    4000
+  end
+
   def identifier_to_path(identifier) do
     "test/images/#{identifier}"
   end

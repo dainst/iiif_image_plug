@@ -238,9 +238,9 @@ defmodule IIIFImagePlug.V3 do
           port: port_override
         }
       ) do
-    scheme = scheme_override || conn.scheme
-    host = host_override || conn.host
-    port = port_override || conn.port
+    scheme = if scheme_override, do: scheme_override.(), else: conn.scheme
+    host = if host_override, do: host_override.(), else: conn.host
+    port = if port_override, do: port_override.(), else: conn.port
 
     "#{scheme}://#{host}#{if port != nil do
       ":#{port}"

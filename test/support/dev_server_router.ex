@@ -12,8 +12,8 @@ defmodule DevServerRouter do
     to: IIIFImagePlug.V3,
     init_opts: %{
       identifier_to_path_callback: &DevServerHelper.identifier_to_path/1,
-      host: "localhost",
-      port: 4000,
+      host: &DevServerHelper.get_host/0,
+      port: &DevServerHelper.get_port/0,
       identifier_to_rights_callback: &DevServerHelper.get_rights/1
     }
   )
@@ -22,8 +22,8 @@ defmodule DevServerRouter do
     to: IIIFImagePlug.V3,
     init_opts: %{
       identifier_to_path_callback: &DevServerHelper.identifier_to_path/1,
-      host: "localhost",
-      port: 4000,
+      host: &DevServerHelper.get_host/0,
+      port: &DevServerHelper.get_port/0,
       identifier_to_rights_callback: &DevServerHelper.get_rights/1
     }
   )
