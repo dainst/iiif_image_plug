@@ -115,7 +115,7 @@ defmodule IIIFImagePlug.V3.Information do
           %{
             type: "Size",
             width: width,
-            heigh: height
+            height: height
           }
         end)
         |> Stream.reject(fn %{width: width} ->
