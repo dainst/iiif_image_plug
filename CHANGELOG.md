@@ -6,6 +6,7 @@ Made some minor additional changes to align with IIIF image API spec:
 - Fixed the static value for key "type" in the `info.json`.
 - Return 404 status code for invalid paths (instead of the 400 in the initial implementation).
 - Redirect to `info.json` if the request ends with the identifier (i.e. from `/path/to/plug/my-image` to `/path/to/plug/my-image/info.json`).
+- Reintroduced override options `:port`, `:host` and `:scheme` for proxy scenarios.
 
 ## 0.3.1
 
