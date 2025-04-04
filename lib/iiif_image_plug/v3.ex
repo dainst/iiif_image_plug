@@ -53,11 +53,23 @@ defmodule IIIFImagePlug.V3 do
   ### `:status_callbacks` (optional)
   A map where each key is a HTTP status code (integer), and each value an arity 2 callback that can be used to replace the plug's default response. Each
   callback should accept a plug as its first parameter and a Map (containing the error message) as its second parameter.
+
+  ### `:scheme` (optional)
+  Override the scheme evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+
+  ### `:host` (optional)
+  Override the host evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+
+  ### `:port` (optional)
+  Override the port evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
   """
 
   defmodule Settings do
     @enforce_keys [
       :identifier_to_path_callback,
+      :scheme,
+      :host,
+      :port,
       :max_width,
       :max_height,
       :max_area,
@@ -71,6 +83,9 @@ defmodule IIIFImagePlug.V3 do
     ]
     defstruct [
       :identifier_to_path_callback,
+      :scheme,
+      :host,
+      :port,
       :max_width,
       :max_height,
       :max_area,
@@ -96,6 +111,9 @@ defmodule IIIFImagePlug.V3 do
       identifier_to_path_callback:
         opts[:identifier_to_path_callback] ||
           raise("Missing callback used to construct file path from identifier."),
+      scheme: opts[:scheme],
+      host: opts[:host],
+      port: opts[:port],
       max_width: opts[:max_width] || @default_max_width,
       max_height: opts[:max_height] || @default_max_height,
       max_area: opts[:max_area] || @default_max_area,
@@ -109,12 +127,12 @@ defmodule IIIFImagePlug.V3 do
     }
   end
 
-  def call(%Plug.Conn{path_info: [identifier]} = conn, _settings) do
+  def call(%Plug.Conn{path_info: [identifier]} = conn, settings) do
     conn
     |> resp(:found, "")
     |> put_resp_header(
       "location",
-      "#{construct_id_url(conn)}/#{identifier}/info.json"
+      "#{construct_id_url(conn, settings)}/#{identifier}/info.json"
     )
   end
 
@@ -212,9 +230,20 @@ defmodule IIIFImagePlug.V3 do
     )
   end
 
-  def construct_id_url(%Conn{} = conn) do
-    "#{conn.scheme}://#{conn.host}#{if conn.port do
-      ":#{conn.port}"
+  def construct_id_url(
+        %Conn{} = conn,
+        %Settings{
+          scheme: scheme_override,
+          host: host_override,
+          port: port_override
+        }
+      ) do
+    scheme = scheme_override || conn.scheme
+    host = host_override || conn.host
+    port = port_override || conn.port
+
+    "#{scheme}://#{host}#{if port != nil do
+      ":#{port}"
     else
       ""
     end}#{if conn.script_name != [], do: Path.join(["/"] ++ conn.script_name)}"

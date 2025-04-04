@@ -1,12 +1,5 @@
 defmodule DevServerHelper do
-  alias Plug.Conn
   @moduledoc false
-
-  def set_url_and_port(%Conn{} = conn, _options) do
-    conn
-    |> Map.put(:host, "localhost")
-    |> Map.put(:port, 4000)
-  end
 
   def identifier_to_path(identifier) do
     "test/images/#{identifier}"

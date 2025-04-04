@@ -37,7 +37,7 @@ defmodule IIIFImagePlug.V3.Information do
         :ok,
         %{
           "@context": "http://iiif.io/api/image/3/context.json",
-          id: "#{V3.construct_id_url(conn)}/#{identifier}",
+          id: "#{V3.construct_id_url(conn, settings)}/#{identifier}",
           type: "ImageService3",
           protocol: "http://iiif.io/api/image",
           width: Image.width(file),

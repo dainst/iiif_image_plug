@@ -1,12 +1,10 @@
 defmodule DevServerRouter do
   use Plug.Router
   use Plug.Debugger
-  import DevServerHelper, only: [set_url_and_port: 2]
 
   @moduledoc false
 
   plug(CORSPlug, origin: ["*"])
-  plug(:set_url_and_port)
   plug(:match)
   plug(:dispatch)
 
@@ -14,6 +12,8 @@ defmodule DevServerRouter do
     to: IIIFImagePlug.V3,
     init_opts: %{
       identifier_to_path_callback: &DevServerHelper.identifier_to_path/1,
+      host: "localhost",
+      port: 4000,
       identifier_to_rights_callback: &DevServerHelper.get_rights/1
     }
   )
@@ -22,6 +22,8 @@ defmodule DevServerRouter do
     to: IIIFImagePlug.V3,
     init_opts: %{
       identifier_to_path_callback: &DevServerHelper.identifier_to_path/1,
+      host: "localhost",
+      port: 4000,
       identifier_to_rights_callback: &DevServerHelper.get_rights/1
     }
   )
