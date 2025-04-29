@@ -18,6 +18,16 @@ defmodule DevServerRouter do
     }
   )
 
+  forward("/custom_404_route",
+    to: IIIFImagePlug.V3,
+    init_opts: %{
+      identifier_to_path_callback: &DevServerHelper.identifier_to_path/1,
+      host: &DevServerHelper.get_host/0,
+      port: &DevServerHelper.get_port/0,
+      status_callbacks: %{404 => &DevServerHelper.handle_404/2}
+    }
+  )
+
   forward("/",
     to: IIIFImagePlug.V3,
     init_opts: %{

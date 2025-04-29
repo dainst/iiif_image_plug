@@ -13,12 +13,12 @@ defmodule DevServerHelper do
     "test/images/#{identifier}"
   end
 
-  def handle_404(conn, plug_info) do
+  def handle_404(conn, _plug_info) do
     response_body =
       cond do
         Plug.Conn.request_url(conn)
         |> String.ends_with?(".json") ->
-          Jason.encode!(plug_info)
+          Jason.encode!(%{"reason" => "not found from custom 404 handler"})
 
         true ->
           # As default we assume an image was requested and we return the fallback png.
