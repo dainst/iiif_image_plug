@@ -68,6 +68,23 @@ defmodule IIIFImagePlug.V3Test do
            } = response
   end
 
+  test "returns the info.json for the sample image image tif" do
+    conn = conn(:get, "/#{@sample_pyramid_tif_name}/info.json")
+
+    conn = DevServerRouter.call(conn, @opts)
+
+    assert conn.state == :sent
+    assert conn.status == 200
+
+    response = Jason.decode!(conn.resp_body)
+
+    assert %{
+             "id" => "http://localhost:4000/bentheim_mill_pyramid.tif",
+             "sizes" => [%{"height" => 150, "type" => "Size", "width" => 250}]
+           } = response
+  end
+
+
   test "returns 404 for unknown identifier" do
     unknown_identifier = "nope.jpg"
 
