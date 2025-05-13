@@ -288,6 +288,24 @@ defmodule IIIFImagePlug.V3Test do
       assert conn.status == 400
     end
 
+    test "returns 400 for invalid rotation parameter" do
+      conn = conn(:get, "/#{@sample_jpg_name}/full/max/nope/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state == :sent
+      assert conn.status == 400
+    end
+
+    test "returns 400 for invalid quality parameter" do
+      conn = conn(:get, "/#{@sample_jpg_name}/full/max/nope/default_jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state == :sent
+      assert conn.status == 400
+    end
+
     test "returns 500 when attempting to open unsupported file and error gets logged" do
       unsupported = "not_an_image.txt"
 
@@ -303,7 +321,7 @@ defmodule IIIFImagePlug.V3Test do
       assert log =~ "File matching identifier '#{unsupported}' could not be opened as an image."
     end
 
-    test "returns 400 for unsupported quality or format" do
+    test "returns 400 for wellformed but unsupported quality or format" do
       conn = conn(:get, "/#{@sample_jpg_name}/full/max/0/default.txt")
 
       conn = DevServerRouter.call(conn, @opts)
