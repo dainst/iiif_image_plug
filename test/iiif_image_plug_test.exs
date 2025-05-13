@@ -11,8 +11,8 @@ defmodule IIIFImagePlug.V3Test do
   @sample_jpg_name "bentheim_mill.jpg"
   @sample_pyramid_tif_name "bentheim_mill_pyramid.tif"
   @sample_png_for_validator "official_test_image.png"
-  @paths_root "test/images/test_paths"
-  @paths_pyramid_root "test/images/test_paths_pyramid"
+
+  @expected_files_root "test/images/expected_results"
 
   test "raises if no identifier to path callback is provided" do
     assert_raise RuntimeError,
@@ -181,11 +181,10 @@ defmodule IIIFImagePlug.V3Test do
   end
 
   describe "image data endpoint" do
-    test "returns the correct image data of the sample jpg image" do
-      generate_path_list(@paths_root)
-      # |> IO.inspect()
-      |> Enum.each(fn path ->
-        conn = conn(:get, "/#{@sample_jpg_name}/#{path}" |> URI.encode())
+    test "returns the expected image data for the different test images" do
+      get_expected_file_paths()
+      |> Enum.each(fn {file_name, path} ->
+        conn = conn(:get, "/#{file_name}/#{path}" |> URI.encode())
 
         conn = DevServerRouter.call(conn, @opts)
 
@@ -197,38 +196,17 @@ defmodule IIIFImagePlug.V3Test do
 
         assert conn.status == 200
 
-        {:ok, from_file} = Image.open("#{@paths_root}/#{path}")
+        {:ok, from_file} = Image.open("#{@expected_files_root}/#{file_name}/#{path}")
         {:ok, from_response} = Image.from_binary(conn.resp_body)
 
-        assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
-      end)
-    end
-
-    test "returns the correct image data of the sample pyramid tif image" do
-      generate_path_list(@paths_pyramid_root)
-      # |> IO.inspect()
-      |> Enum.each(fn path ->
-        conn = conn(:get, "/#{@sample_pyramid_tif_name}/#{path}" |> URI.encode())
-
-        conn = DevServerRouter.call(conn, @opts)
-
-        if String.ends_with?(path, "tif") do
-          assert conn.state == :sent
-        else
-          assert conn.state == :chunked
-        end
-
-        assert conn.status == 200
-
-        {:ok, from_file} = Image.open("#{@paths_pyramid_root}/#{path}")
-        {:ok, from_response} = Image.from_binary(conn.resp_body)
-
-        if path == "full/!200,250/0/default.jpg" do
+        if file_name == "bentheim_pyramid.tif" and path == "full/!200,250/0/default.jpg" do
           assert {:ok, quality, _image} = Image.compare(from_file, from_response)
           assert quality < 0.1
         else
           assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
         end
+
+        assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
       end)
     end
 
@@ -240,21 +218,6 @@ defmodule IIIFImagePlug.V3Test do
       assert conn.state == :chunked
       assert conn.status == 200
     end
-
-    # test "square on a square image" do
-    #   conn = conn(:get, "/#{@sample_png_for_validator}/square/max/0/default.jpg")
-
-    #   conn = DevServerRouter.call(conn, @opts)
-
-    #   assert conn.state == :chunked
-    #   assert conn.status == 200
-
-    #   {:ok, from_file} = Image.open("test/images/#{@sample_png_for_validator}")
-    #   {:ok, from_response} = Image.from_binary(conn.resp_body)
-
-    #   assert Image.width(from_file) == Image.width(from_response)
-    #   assert Image.height(from_file) == Image.height(from_response)
-    # end
 
     test "returns 404 for unknown identifier" do
       unknown_identifier = "does_not_exist.jpg"
@@ -334,17 +297,21 @@ defmodule IIIFImagePlug.V3Test do
     end
   end
 
-  defp generate_path_list(root) do
-    File.ls!(root)
-    |> Enum.map(fn region ->
-      File.ls!("#{root}/#{region}")
-      |> Enum.map(fn size ->
-        File.ls!("#{root}/#{region}/#{size}")
-        |> Enum.map(fn rotation ->
-          File.ls!("#{root}/#{region}/#{size}/#{rotation}")
-          |> Enum.map(fn quality_and_format ->
-            "#{region}/#{size}/#{rotation}/#{quality_and_format}"
+  defp get_expected_file_paths() do
+    File.ls!(@expected_files_root)
+    |> Enum.map(fn file_name ->
+      File.ls!("#{@expected_files_root}/#{file_name}")
+      |> Enum.map(fn region ->
+        File.ls!("#{@expected_files_root}/#{file_name}/#{region}")
+        |> Enum.map(fn size ->
+          File.ls!("#{@expected_files_root}/#{file_name}/#{region}/#{size}")
+          |> Enum.map(fn rotation ->
+            File.ls!("#{@expected_files_root}/#{file_name}/#{region}/#{size}/#{rotation}")
+            |> Enum.map(fn quality_and_format ->
+              {file_name, "#{region}/#{size}/#{rotation}/#{quality_and_format}"}
+            end)
           end)
+          |> List.flatten()
         end)
         |> List.flatten()
       end)
