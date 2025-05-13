@@ -258,6 +258,47 @@ defmodule IIIFImagePlug.V3Test do
       assert conn.status == 400
     end
 
+    test "returns 400 for invalid w,h size parameters" do
+      conn = conn(:get, "/#{@sample_jpg_name}/full/no,pe/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state == :sent
+      assert conn.status == 400
+
+      conn = conn(:get, "/#{@sample_jpg_name}/full/,pe/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state == :sent
+      assert conn.status == 400
+
+      conn = conn(:get, "/#{@sample_jpg_name}/full/no,/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state == :sent
+      assert conn.status == 400
+    end
+
+    test "returns 400 for invalid percent size parameter" do
+      conn = conn(:get, "/#{@sample_jpg_name}/full/pct:nope/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state == :sent
+      assert conn.status == 400
+    end
+
+    test "returns 400 if percent size parameter is larger then 100 without requesting upscaling" do
+      conn = conn(:get, "/#{@sample_jpg_name}/full/pct:120/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state == :sent
+      assert conn.status == 400
+    end
+
     test "returns 400 for invalid rotation parameter" do
       conn = conn(:get, "/#{@sample_jpg_name}/full/max/nope/default.jpg")
 
