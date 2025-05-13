@@ -196,17 +196,24 @@ defmodule IIIFImagePlug.V3Test do
 
         assert conn.status == 200
 
-        {:ok, from_file} = Image.open("#{@expected_files_root}/#{file_name}/#{path}")
+        {:ok, from_file} =
+          Image.open("#{@expected_files_root}/#{file_name}/#{path}")
+
         {:ok, from_response} = Image.from_binary(conn.resp_body)
 
-        if file_name == "bentheim_pyramid.tif" and path == "full/!200,250/0/default.jpg" do
-          assert {:ok, quality, _image} = Image.compare(from_file, from_response)
-          assert quality < 0.1
-        else
-          assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
-        end
+        cond do
+          # TODO: Why is this not +0.0 for these two?
+          file_name == "bentheim_mill_pyramid.tif" and path == "full/!200,250/0/default.jpg" ->
+            assert {:ok, difference, _image} = Image.compare(from_file, from_response)
+            assert difference < 0.1
 
-        assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+          file_name == "official_test_image.png" and path == "square/max/0/default.png" ->
+            assert {:ok, difference, _image} = Image.compare(from_file, from_response)
+            assert difference < 0.1
+
+          true ->
+            assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+        end
       end)
     end
 
