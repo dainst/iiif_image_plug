@@ -47,6 +47,4 @@ defmodule IIIFImagePlug.V3.Quality do
     |> Operation.colourspace!(:VIPS_INTERPRETATION_B_W)
     |> Operation.relational_const!(:VIPS_OPERATION_RELATIONAL_MOREEQ, [average])
   end
-
-  def apply(error, _, _average), do: error
 end

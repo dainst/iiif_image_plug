@@ -34,10 +34,6 @@ defmodule IIIFImagePlug.V3.Rotation do
     end
   end
 
-  def parse(_param) do
-    {:error, :invalid_rotation}
-  end
-
   def apply(%Image{} = image, %Rotation{degrees: 0, flip?: false}) do
     image
   end
@@ -56,9 +52,5 @@ defmodule IIIFImagePlug.V3.Rotation do
       if flip?, do: Operation.flip!(image, :VIPS_DIRECTION_HORIZONTAL), else: image
     end)
     |> Operation.rotate!(degrees)
-  end
-
-  def apply(error, _rotation) do
-    error
   end
 end

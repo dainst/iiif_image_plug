@@ -145,10 +145,6 @@ defmodule IIIFImagePlug.V3.Region do
     end
   end
 
-  def parse(_image, _param) do
-    {:error, :invalid_region}
-  end
-
   def apply(%Image{} = image, %ExtractArea{left: 0, top: 0, width: width, height: height}) do
     image_width = Image.width(image)
     image_height = Image.height(image)
@@ -162,9 +158,5 @@ defmodule IIIFImagePlug.V3.Region do
 
   def apply(%Image{} = image, %ExtractArea{left: left, top: top, width: width, height: height}) do
     Operation.extract_area!(image, left, top, width, height)
-  end
-
-  def apply(error, _) do
-    error
   end
 end
