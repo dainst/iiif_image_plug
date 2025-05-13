@@ -73,10 +73,6 @@ defmodule IIIFImagePlug.V3.Size do
     end
   end
 
-  def parse(error, _params, _settings) do
-    error
-  end
-
   def apply(%Image{} = image, %Scaling{scale: 1, vscale: nil}) do
     image
   end
@@ -87,10 +83,6 @@ defmodule IIIFImagePlug.V3.Size do
 
   def apply(%Image{} = image, %Scaling{scale: scale, vscale: vscale}) do
     Operation.resize!(image, scale, vscale: vscale)
-  end
-
-  def apply(_image, _scaling) do
-    {:error, :invalid_size}
   end
 
   defp parse_percent(%Image{} = image, parameter, upscale?, %Settings{} = settings) do
@@ -287,9 +279,5 @@ defmodule IIIFImagePlug.V3.Size do
       _ ->
         {:error, :invalid_size}
     end
-  end
-
-  defp parse_w_h(_image, _w_h_parameter, _upscale?, _maintain_ratio?, _settings) do
-    {:error, :invalid_size}
   end
 end
