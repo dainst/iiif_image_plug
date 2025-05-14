@@ -38,6 +38,15 @@ defmodule IIIFImagePlug.V3 do
   The [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your service can deliver. Note that TIF files
   have to be buffered before they are sent, so large images might cause issues.
 
+  ### `:scheme` (optional)
+  Callback function to override the scheme evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+
+  ### `:host` (optional)
+  Callback function to override the host evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+
+  ### `:port` (optional)
+  Callback function to override the port evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+
   ### `:identifier_to_rights_callback` (optional)
   An arity 1 callback function that returns a [rights](https://iiif.io/api/image/3.0/#56-rights) statement for a given identifier.
 
@@ -53,15 +62,6 @@ defmodule IIIFImagePlug.V3 do
   ### `:status_callbacks` (optional)
   A map where each key is a HTTP status code (integer), and each value an arity 2 callback that can be used to replace the plug's default response. Each
   callback should accept a plug as its first parameter and a Map (containing the error message) as its second parameter.
-
-  ### `:scheme` (optional)
-  Override the scheme evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
-
-  ### `:host` (optional)
-  Override the host evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
-
-  ### `:port` (optional)
-  Override the port evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
   """
 
   defmodule Settings do
