@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+- Changed override options `:port`, `:host` and `:scheme` into callbacks to make values configurable at runtime.
+- Fixed "height" key typo in `info.json`
+- Fixed handling of files that contain exif orientation metadata tags.
+
 ## 0.4.0
 
 Made some minor additional changes to align with IIIF image API spec:
