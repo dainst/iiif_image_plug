@@ -1,4 +1,5 @@
 defmodule IIIFImagePlug.V3.Data do
+  alias Vix.Vips.Operation
   alias IIIFImagePlug.V3.Size.Scaling
   alias IIIFImagePlug.V3.Region.ExtractArea
   alias IIIFImagePlug.V3.Quality
@@ -35,6 +36,7 @@ defmodule IIIFImagePlug.V3.Data do
 
     with {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},
+         {:file_opened, {:ok, {file, _}}} <- {:file_opened, Operation.autorot(file)},
          {:quality_and_format_parsed, %{quality: quality, format: format}} <-
            {:quality_and_format_parsed, Quality.parse(quality_and_format_param, settings)} do
       page_count =
