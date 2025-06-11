@@ -7,7 +7,7 @@
 
 ## 0.4.0
 
-Made some minor additional changes to align with IIIF image API spec:
+Made some minor additional changes to align with the IIIF image API spec:
 - Fixed the static value for key "type" in the `info.json`.
 - Return 404 status code for invalid paths (instead of the 400 in the initial implementation).
 - Redirect to `info.json` if the request ends with the identifier (i.e. from `/path/to/plug/my-image` to `/path/to/plug/my-image/info.json`).
@@ -15,7 +15,7 @@ Made some minor additional changes to align with IIIF image API spec:
 
 ## 0.3.1
 
-Fixed error with pyramid page optimization was not applied if no `vscale` was requested. This caused a fallback to full image processing.
+Fixed error where pyramid page optimization was not applied if no vertical scaling was requested. This caused a fallback to the default full scale processing.
 
 ## 0.3.0
 

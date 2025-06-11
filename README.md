@@ -1,7 +1,7 @@
 [![CI status](https://github.com/dainst/iiif_image_plug/actions/workflows/ci.yml/badge.svg)](https://github.com/dainst/iiif_image_plug/actions/workflows/ci.yml)
 
-- [hex](https://hex.pm/packages/iiif_image_plug)
-- [docs](https://hexdocs.pm/iiif_image_plug/)
+- [hex package](https://hex.pm/packages/iiif_image_plug)
+- [hex documentation](https://hexdocs.pm/iiif_image_plug/)
 
 # IIIF Image Plug
 
