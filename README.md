@@ -64,7 +64,7 @@ For the complete list of plug options have a look at the module documentation.
 
 ### CORS 
 
-For your service to be fully implement the API specification, you need to properly configure Cross-Origin Resource Sharing (CORS). This has to be done outside the context of this plug, one option could be to use the
+For your service to fully implement the API specification, you need to properly configure Cross-Origin Resource Sharing (CORS). This has to be done outside the context of this plug, one option could be to use the
 [CorsPlug](https://hexdocs.pm/cors_plug/readme.html) library:
 
 ```elixir
