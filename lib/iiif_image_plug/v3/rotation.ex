@@ -46,6 +46,7 @@ defmodule IIIFImagePlug.V3.Rotation do
     if Image.has_alpha?(image) do
       image
     else
+      # Add alpha channel if missing, so that non-90° rotations have can have a transparent background.
       Operation.bandjoin_const!(image, [255.0])
     end
     |> then(fn image ->
