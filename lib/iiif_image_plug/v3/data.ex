@@ -66,7 +66,7 @@ defmodule IIIFImagePlug.V3.Data do
           []
         end
 
-      case pipeline_full(file, region_param, size_param, rotation_param, quality, pages, settings) do
+      case transform(file, region_param, size_param, rotation_param, quality, pages, settings) do
         %Image{} = image ->
           {image, format}
 
@@ -85,7 +85,7 @@ defmodule IIIFImagePlug.V3.Data do
     end
   end
 
-  defp pipeline_full(
+  defp transform(
          file,
          region_param,
          size_param,
@@ -95,13 +95,17 @@ defmodule IIIFImagePlug.V3.Data do
          settings
        ) do
     with %Region.ExtractArea{} = area <- Region.parse(file, region_param),
-         %Image{} = applied_base_region <- Region.apply(file, area),
-         %Size.Scaling{} = scaling <- Size.parse(applied_base_region, size_param, settings),
-         %Image{} = applied_base_scaling <- Size.apply(applied_base_region, scaling),
-         %Image{} = applied_page_optimized <-
-           page_optimize(area, scaling, file, applied_base_scaling, pages),
-         %Image{} = final <-
-           pipeline_rotation_and_quality(applied_page_optimized, rotation_param, quality_param) do
+         %Rotation.Rotation{} = rotation <- Rotation.parse(rotation_param),
+         %Image{} = image <- Region.apply(file, area),
+         # Scaling factor can only be evaluated based off the selected region in some cases.
+         %Size.Scaling{} = scaling <- Size.parse(image, size_param, settings),
+         %Image{} = image <- Size.apply(image, scaling),
+         %Image{} = image <- page_optimize(area, scaling, file, image, pages),
+         # Average is used for creating bitonal images, and we calculate it specifically for the
+         # selected region.
+         average <- calculate_average(image, quality_param),
+         %Image{} = image <- Rotation.apply(image, rotation),
+         %Image{} = final <- Quality.apply(image, quality_param, average) do
       final
     else
       error ->
@@ -109,43 +113,34 @@ defmodule IIIFImagePlug.V3.Data do
     end
   end
 
-  defp pipeline_rotation_and_quality(image, rotation_param, quality_param) do
-    with average <- calculate_average(image, quality_param),
-         %Rotation.Rotation{} = rotation <- Rotation.parse(rotation_param),
-         %Image{} = image <- Rotation.apply(image, rotation),
-         %Image{} = final <- Quality.apply(image, quality_param, average) do
-      final
-    else
-      error -> error
-    end
-  end
-
   defp page_optimize(
          _area,
          _scaling,
-         _base_image,
-         base_image_transform,
+         _source_image,
+         %Image{} = unoptimized_transform,
          pages
        )
        when pages == [] do
-    base_image_transform
+    # No image pages, nothing to optimize.
+    unoptimized_transform
   end
 
   defp page_optimize(
          _area,
          %Scaling{scale: 1, vscale: nil},
-         _base_image,
-         base_image_transform,
+         _source_image,
+         %Image{} = unoptimized_transform,
          _pages
        ) do
-    base_image_transform
+    # No scaling requested, nothing to optimize.
+    unoptimized_transform
   end
 
   defp page_optimize(
          %ExtractArea{} = requested_area,
          %Scaling{scale: requested_scale, vscale: requested_vscale},
-         %Image{} = base_image,
-         %Image{} = base_image_transformed,
+         %Image{} = source_image,
+         %Image{} = unoptimized_transform,
          pages
        )
        when is_list(pages) do
@@ -166,19 +161,18 @@ defmodule IIIFImagePlug.V3.Data do
     |> case do
       {page, %Size.Scaling{scale: page_scale, vscale: page_vscale}} ->
         adjusted_region =
-          if not full_region_requested?(base_image, requested_area) do
-            adjusted_area =
+          if full_region_requested?(source_image, requested_area) do
+            page
+          else
+            Region.apply(
+              page,
               %ExtractArea{
                 left: (requested_area.left * page_scale) |> trunc(),
-                top: (requested_area.top * page_scale) |> trunc(),
+                top: (requested_area.top * page_vscale) |> trunc(),
                 width: (requested_area.width * page_scale) |> trunc(),
-                height: (requested_area.height * page_scale) |> trunc()
+                height: (requested_area.height * page_vscale) |> trunc()
               }
-
-            page
-            |> Region.apply(adjusted_area)
-          else
-            page
+            )
           end
 
         adjusted_scale = requested_scale / page_scale
@@ -195,7 +189,7 @@ defmodule IIIFImagePlug.V3.Data do
       nil ->
         # None of the lower resolution page scales was higher than the requested one, so we use the
         # unoptimized transformation.
-        base_image_transformed
+        unoptimized_transform
     end
   end
 
