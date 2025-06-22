@@ -65,6 +65,8 @@ defmodule IIIFImagePlug.V3 do
   """
 
   defmodule Settings do
+    @moduledoc false
+
     @enforce_keys [
       :identifier_to_path_callback,
       :scheme,
