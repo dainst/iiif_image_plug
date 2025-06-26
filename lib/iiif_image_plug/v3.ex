@@ -37,12 +37,16 @@ defmodule IIIFImagePlug.V3 do
   ### `:extra_formats` (default: `[:png, :webp, :tif]`)
   The [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your service can deliver.
 
-  ### `:temp_dir` (default: Evaluates [System.tmp_dir!()](https://hexdocs.pm/elixir/System.html#tmp_dir!/0) and creates a directory "iiif_image_plug" there)
-  This temporary directory will be used for TIF requests. Because of how the TIF format is structured, we can not stream the result TIFs results. Instead
-  we have to first write the whole image in a temporary file. We then stream the file from disc, deleting it after it got sent.
+  ### `:temp_dir` (default: Evaluates [System.tmp_dir!()](https://hexdocs.pm/elixir/System.html#tmp_dir!/0) and creates
+  a directory "iiif_image_plug" there.
 
-  If you want to forgo this file creation, you can set `temp_dir` to `:buffer`, which will write the complete image to memory
-  instead of disc, which is faster but also may cause memory issues if very large images are requested as TIF.
+  Because of how the TIF file format is structured, the plug can not stream the image if tif was requested as the response
+  [format](https://iiif.io/api/image/3.0/#45-format). Instead, the image gets first written to a temporary file, which is then streamed
+  from disk and finally getting deleted.
+
+  If you want to forgo this file creation, you can set this option to `:buffer` instead of a file path. This will configure
+  the plug to write the complete image to memory instead of disk - which is faster but also may cause memory issues if
+  very large images are requested.
 
   ### `:scheme` (optional)
   Callback function to override the scheme evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
