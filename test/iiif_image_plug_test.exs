@@ -189,7 +189,7 @@ defmodule IIIFImagePlug.V3Test do
         conn = DevServerRouter.call(conn, @opts)
 
         if String.ends_with?(path, "tif") do
-          assert conn.state == :sent
+          assert conn.state == :file
         else
           assert conn.state == :chunked
         end
@@ -342,6 +342,25 @@ defmodule IIIFImagePlug.V3Test do
       response = Jason.decode!(conn.resp_body)
 
       assert %{"error" => "invalid_quality_and_format"} = response
+    end
+
+    test "returns buffered tiff files" do
+      path = "#{@sample_jpg_name}/full/max/0/default.tif"
+
+      conn = conn(:get, "/buffered_tiffs/#{path}")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      refute conn.state == :file
+      assert conn.state == :sent
+      assert conn.status == 200
+
+      {:ok, from_file} =
+        Image.open("#{@expected_files_root}/#{path}")
+
+      {:ok, from_response} = Image.from_binary(conn.resp_body)
+
+      assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
     end
   end
 

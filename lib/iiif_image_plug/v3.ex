@@ -35,8 +35,14 @@ defmodule IIIFImagePlug.V3 do
   The [preferred formats](https://iiif.io/api/image/3.0/#55-preferred-formats) to be used for your service.
 
   ### `:extra_formats` (default: `[:png, :webp, :tif]`)
-  The [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your service can deliver. Note that TIF files
-  have to be buffered before they are sent, so large images might cause issues.
+  The [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your service can deliver.
+
+  ### `:temp_dir` (default: Evaluates [System.tmp_dir!()](https://hexdocs.pm/elixir/System.html#tmp_dir!/0) and creates a directory "iiif_image_plug" there)
+  This temporary directory will be used for TIF requests. Because of how the TIF format is structured, we can not stream the result TIFs results. Instead
+  we have to first write the whole image in a temporary file. We then stream the file from disc, deleting it after it got sent.
+
+  If you want to forgo this file creation, you can set `temp_dir` to `:buffer`, which will write the complete image to memory
+  instead of disc, which is faster but also may cause memory issues if very large images are requested as TIF.
 
   ### `:scheme` (optional)
   Callback function to override the scheme evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
@@ -81,7 +87,8 @@ defmodule IIIFImagePlug.V3 do
       :identifier_to_part_of_callback,
       :identifier_to_see_also_callback,
       :identifier_to_service_callback,
-      :status_callbacks
+      :status_callbacks,
+      :temp_dir
     ]
     defstruct [
       :identifier_to_path_callback,
@@ -97,7 +104,8 @@ defmodule IIIFImagePlug.V3 do
       :identifier_to_part_of_callback,
       :identifier_to_see_also_callback,
       :identifier_to_service_callback,
-      :status_callbacks
+      :status_callbacks,
+      :temp_dir
     ]
   end
 
@@ -109,6 +117,12 @@ defmodule IIIFImagePlug.V3 do
   @default_max_area Application.compile_env(:iiif_image_plug, :max_area, 10000 * 10000)
 
   def init(opts) when is_map(opts) do
+    temp_dir = opts[:temp_dir] || Path.join(System.tmp_dir!(), "iiif_image_plug")
+
+    if temp_dir != :buffer do
+      File.mkdir_p!(temp_dir)
+    end
+
     %Settings{
       identifier_to_path_callback:
         opts[:identifier_to_path_callback] ||
@@ -119,6 +133,7 @@ defmodule IIIFImagePlug.V3 do
       max_width: opts[:max_width] || @default_max_width,
       max_height: opts[:max_height] || @default_max_height,
       max_area: opts[:max_area] || @default_max_area,
+      temp_dir: temp_dir,
       preferred_formats: opts[:preferred_formats] || @default_preferred_format,
       extra_formats: opts[:extra_formats] || @default_extra_formats,
       identifier_to_rights_callback: opts[:identifier_to_rights_callback],
@@ -173,7 +188,8 @@ defmodule IIIFImagePlug.V3 do
           path_info: [identifier, region, size, rotation, quality_and_format]
         } = conn,
         %Settings{
-          status_callbacks: status_callbacks
+          status_callbacks: status_callbacks,
+          temp_dir: temp_dir
         } =
           settings
       ) do
@@ -186,10 +202,20 @@ defmodule IIIFImagePlug.V3 do
            settings
          ) do
       {%Image{} = image, format} ->
-        if format == "tif" do
-          send_buffered(conn, image, format)
-        else
-          send_stream(conn, image, format)
+        cond do
+          format == "tif" and temp_dir == :buffer ->
+            send_buffered(conn, image, format)
+
+          format == "tif" ->
+            prefix = :crypto.strong_rand_bytes(8) |> Base.url_encode64() |> binary_part(0, 8)
+
+            file_name =
+              "#{prefix}_#{quality_and_format}"
+
+            send_temporary_file(conn, image, Path.join(temp_dir, file_name))
+
+          true ->
+            send_stream(conn, image, format)
         end
 
       {:error, :no_file} ->
@@ -254,6 +280,22 @@ defmodule IIIFImagePlug.V3 do
   defp send_buffered(conn, %Image{} = image, format) do
     {:ok, buffer} = Image.write_to_buffer(image, ".#{format}")
     send_resp(conn, 200, buffer)
+  end
+
+  defp send_temporary_file(conn, %Image{} = image, file_path) do
+    parent = self()
+
+    spawn(fn ->
+      Process.monitor(parent)
+
+      receive do
+        {:DOWN, _ref, :process, _pid, _reason} ->
+          File.rm(file_path)
+      end
+    end)
+
+    Image.write_to_file(image, file_path)
+    send_file(conn, 200, file_path)
   end
 
   defp send_stream(conn, %Image{} = image, format) do
