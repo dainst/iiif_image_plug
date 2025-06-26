@@ -333,7 +333,47 @@ defmodule IIIFImagePlug.V3Test do
     end
 
     test "returns 400 for wellformed but unsupported quality or format" do
-      conn = conn(:get, "/#{@sample_jpg_name}/full/max/0/default.txt")
+      conn = conn(:get, "/no_extra_formats/#{@sample_jpg_name}/full/max/0/default.png")
+
+      conn = DevServerRouter.call(conn, @opts)
+      assert conn.state == :sent
+      assert conn.status == 400
+
+      response = Jason.decode!(conn.resp_body)
+
+      assert %{"error" => "invalid_quality_and_format"} = response
+
+      conn = conn(:get, "/no_extra_formats/#{@sample_jpg_name}/full/max/0/default.tif")
+
+      conn = DevServerRouter.call(conn, @opts)
+      assert conn.state == :sent
+      assert conn.status == 400
+
+      response = Jason.decode!(conn.resp_body)
+
+      assert %{"error" => "invalid_quality_and_format"} = response
+
+      conn = conn(:get, "/no_extra_formats/#{@sample_jpg_name}/full/max/0/default.webp")
+
+      conn = DevServerRouter.call(conn, @opts)
+      assert conn.state == :sent
+      assert conn.status == 400
+
+      response = Jason.decode!(conn.resp_body)
+
+      assert %{"error" => "invalid_quality_and_format"} = response
+
+      conn = conn(:get, "/no_extra_formats/#{@sample_jpg_name}/full/max/0/default.txt")
+
+      conn = DevServerRouter.call(conn, @opts)
+      assert conn.state == :sent
+      assert conn.status == 400
+
+      response = Jason.decode!(conn.resp_body)
+
+      assert %{"error" => "invalid_quality_and_format"} = response
+
+      conn = conn(:get, "/#{@sample_jpg_name}/full/max/0/rainbow.jpg")
 
       conn = DevServerRouter.call(conn, @opts)
       assert conn.state == :sent
