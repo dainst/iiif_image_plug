@@ -73,37 +73,19 @@ defmodule IIIFImagePlug.V3 do
     @moduledoc false
 
     @enforce_keys [
-      :identifier_to_path_callback,
-      :scheme,
-      :host,
-      :port,
       :max_width,
       :max_height,
       :max_area,
       :preferred_formats,
       :extra_formats,
-      :identifier_to_rights_callback,
-      :identifier_to_part_of_callback,
-      :identifier_to_see_also_callback,
-      :identifier_to_service_callback,
-      :status_callbacks,
       :temp_dir
     ]
     defstruct [
-      :identifier_to_path_callback,
-      :scheme,
-      :host,
-      :port,
       :max_width,
       :max_height,
       :max_area,
       :preferred_formats,
       :extra_formats,
-      :identifier_to_rights_callback,
-      :identifier_to_part_of_callback,
-      :identifier_to_see_also_callback,
-      :identifier_to_service_callback,
-      :status_callbacks,
       :temp_dir
     ]
   end
