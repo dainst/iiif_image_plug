@@ -8,7 +8,6 @@ defmodule IIIFImagePlug.V3.Data do
   alias IIIFImagePlug.V3.Rotation
   alias IIIFImagePlug.V3.Size
   alias IIIFImagePlug.V3.Region
-  alias IIIFImagePlug.V3.Settings
 
   @moduledoc """
   Produces image data based on the given IIIF parameters and Plug settings.
@@ -29,11 +28,10 @@ defmodule IIIFImagePlug.V3.Data do
         size_param,
         rotation_param,
         quality_and_format_param,
-        %Settings{
-          identifier_to_path_callback: path_callback
-        } = settings
+        settings,
+        module
       ) do
-    path = path_callback.(identifier)
+    {:ok, path} = module.identifier_to_path(identifier)
 
     with {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},

@@ -1,5 +1,4 @@
 defmodule IIIFImagePlug.V3Test do
-  alias IIIFImagePlug.V3
   use ExUnit.Case, async: true
   doctest IIIFImagePlug.V3
 
@@ -14,29 +13,34 @@ defmodule IIIFImagePlug.V3Test do
 
   @expected_files_root "test/images/expected_results"
 
-  test "raises if no identifier to path callback is provided" do
-    assert_raise RuntimeError,
-                 "Missing callback used to construct file path from identifier.",
-                 fn -> V3.init(%{}) end
-  end
-
-  test "does not raise if identifier to path callback is provided" do
-    assert %IIIFImagePlug.V3.Settings{
-             scheme: nil,
-             host: nil,
-             port: nil,
-             max_width: 600,
-             max_height: 400,
-             max_area: 240_000,
-             preferred_formats: [:jpg],
-             extra_formats: [:webp, :png, :tif],
-             identifier_to_rights_callback: nil,
-             identifier_to_part_of_callback: nil,
-             identifier_to_see_also_callback: nil,
-             identifier_to_service_callback: nil,
-             status_callbacks: %{}
-           } = V3.init(%{identifier_to_path_callback: &DevServerHelper.identifier_to_path/1})
-  end
+  @expected_file_info %{
+    "@context" => "http://iiif.io/api/image/3/context.json",
+    "extraFormats" => ["webp", "png", "tif"],
+    "extraQualities" => ["color", "gray", "bitonal"],
+    "extra_features" => [
+      "mirroring",
+      "regionByPct",
+      "regionByPx",
+      "regionSquare",
+      "rotationArbitrary",
+      "sizeByConfinedWh",
+      "sizeByH",
+      "sizeByPct",
+      "sizeByW",
+      "sizeByWh",
+      "sizeUpscaling"
+    ],
+    "height" => 300,
+    "id" => "http://localhost:4000/bentheim_mill.jpg",
+    "maxArea" => 240_000,
+    "maxHeight" => 400,
+    "maxWidth" => 600,
+    "preferredFormat" => ["jpg"],
+    "profile" => "level2",
+    "protocol" => "http://iiif.io/api/image",
+    "type" => "ImageService3",
+    "width" => 500
+  }
 
   test "returns the info.json for the sample image image" do
     conn = conn(:get, "/#{@sample_jpg_name}/info.json")
@@ -48,35 +52,7 @@ defmodule IIIFImagePlug.V3Test do
 
     response = Jason.decode!(conn.resp_body)
 
-    assert %{
-             "@context" => "http://iiif.io/api/image/3/context.json",
-             "extraFormats" => ["webp", "png", "tif"],
-             "extraQualities" => ["color", "gray", "bitonal"],
-             "extra_features" => [
-               "mirroring",
-               "regionByPct",
-               "regionByPx",
-               "regionSquare",
-               "rotationArbitrary",
-               "sizeByConfinedWh",
-               "sizeByH",
-               "sizeByPct",
-               "sizeByW",
-               "sizeByWh",
-               "sizeUpscaling"
-             ],
-             "height" => 300,
-             "id" => "http://localhost:4000/bentheim_mill.jpg",
-             "maxArea" => 240_000,
-             "maxHeight" => 400,
-             "maxWidth" => 600,
-             "preferredFormat" => ["jpg"],
-             "profile" => "level2",
-             "protocol" => "http://iiif.io/api/image",
-             "rights" => "https://creativecommons.org/publicdomain/zero/1.0/",
-             "type" => "ImageService3",
-             "width" => 500
-           } = response
+    assert @expected_file_info = response
   end
 
   test "returns the correct info.json on non-root paths for the sample image image" do
@@ -110,6 +86,52 @@ defmodule IIIFImagePlug.V3Test do
            } = response
   end
 
+  test "returns additional linking properties and rights info if defined" do
+    extended =
+      @expected_file_info
+      |> Map.merge(%{
+        "rights" => "https://creativecommons.org/publicdomain/zero/1.0/",
+        "part_of" => [
+          %{
+            "id" => "https://example.org/manifest/1",
+            "label" => %{"en" => ["A Book"]},
+            "type" => "Manifest"
+          }
+        ],
+        "see_also" => [
+          %{
+            "format" => "text/xml",
+            "id" => "https://example.org/image1.xml",
+            "label" => %{"en" => ["Technical image metadata"]},
+            "profile" => "https://example.org/profiles/imagedata",
+            "type" => "Dataset"
+          }
+        ],
+        "service" => [
+          %{
+            "@id" => "https://example.org/auth/login",
+            "@type" => "AuthCookieService1",
+            "label" => "Login to Example Institution",
+            "profile" => "http://iiif.io/api/auth/1/login"
+          }
+        ]
+      })
+
+    conn = conn(:get, "/#{@sample_jpg_name}/info.json")
+    conn = DevServerRouter.call(conn, @opts)
+
+    response_default = Jason.decode!(conn.resp_body)
+
+    extended = Map.replace(extended, "id", "http://localhost:4000/extra_info/bentheim_mill.jpg")
+
+    conn = conn(:get, "/extra_info/#{@sample_jpg_name}/info.json")
+    conn = DevServerRouter.call(conn, @opts)
+    response_extra = Jason.decode!(conn.resp_body)
+
+    refute extended == response_default
+    assert extended == response_extra
+  end
+
   test "redirects to info.json if only identifier is provided" do
     conn = conn(:get, "/#{@sample_pyramid_tif_name}")
 
@@ -132,7 +154,7 @@ defmodule IIIFImagePlug.V3Test do
 
     response = Jason.decode!(conn.resp_body)
 
-    assert %{"path_info" => ["this", "wont", "do"], "reason" => "Unknown path."} = response
+    assert %{"error" => "unknown_route"} = response
   end
 
   test "returns 404 for unknown identifier" do
@@ -175,9 +197,19 @@ defmodule IIIFImagePlug.V3Test do
     assert conn.state == :sent
     assert conn.status == 404
 
-    response = Jason.decode!(conn.resp_body)
+    assert "A custom response." = conn.resp_body
+  end
 
-    assert %{"reason" => "not found from custom 404 handler"} = response
+  test "uses error status callbacks fallback if custom ones do not match" do
+    # invalid region parameter should cause 400, which is not customized.
+    conn = conn(:get, "/#{@sample_jpg_name}/nope/max/0/default.jpg")
+
+    conn = DevServerRouter.call(conn, @opts)
+
+    assert conn.state == :sent
+    assert conn.status == 400
+
+    assert "{\"error\":\"invalid_region\"}" = conn.resp_body
   end
 
   describe "image data endpoint" do

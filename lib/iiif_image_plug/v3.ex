@@ -1,16 +1,11 @@
 defmodule IIIFImagePlug.V3 do
-  @behaviour Plug
-
-  import Plug.Conn
-
   alias Plug.Conn
 
   alias Vix.Vips.Image
 
-  alias IIIFImagePlug.V3.{
-    Data,
-    Information
-  }
+  alias IIIFImagePlug.V3.Data
+
+  import Plug.Conn
 
   require Logger
 
@@ -113,6 +108,72 @@ defmodule IIIFImagePlug.V3 do
     ]
   end
 
+  @callback identifier_to_path(identifier :: String.t()) ::
+              {:ok, String.t()} | {:error, atom()}
+  @callback send_error(
+              conn :: Conn.t(),
+              status_code :: number(),
+              error_code :: atom(),
+              error_msg :: String.t()
+            ) ::
+              Conn.t() | no_return()
+
+  defmacro __using__(_opts) do
+    #### do something with opts
+    quote do
+      #### return some code to inject in the caller
+      import Plug.Conn
+
+      @behaviour Plug
+      @behaviour IIIFImagePlug.V3
+
+      @impl Plug
+      def init(opts), do: IIIFImagePlug.V3.init(opts)
+
+      @impl Plug
+      def call(conn, opts), do: IIIFImagePlug.V3.call(conn, opts, __MODULE__)
+
+      def scheme(), do: IIIFImagePlug.V3.scheme()
+      def host(), do: IIIFImagePlug.V3.host()
+      def port(), do: IIIFImagePlug.V3.port()
+
+      def rights(identifier), do: IIIFImagePlug.V3.rights(identifier)
+      def part_of(identifier), do: IIIFImagePlug.V3.part_of(identifier)
+      def see_also(identifier), do: IIIFImagePlug.V3.see_also(identifier)
+      def service(identifier), do: IIIFImagePlug.V3.service(identifier)
+
+      # See https://dockyard.com/blog/2024/04/18/use-macro-with-defoverridable-function-fallbacks
+      #
+      # Basically if no `send_error/3` is defined by the user of the library, this will use the `send_error/3`
+      # defined in the V3 module below. If the user creates a custom implementation, this would normally 100%
+      # replace the default. Because we want to give the users the opportunity to customize only specific
+      # errors, the @before_compile below will re-add our defaults as a fallback.
+
+      def send_error(%Conn{} = conn, status_code, error_type, error_msg) do
+        IIIFImagePlug.V3.send_error(conn, status_code, error_type, error_msg)
+      end
+
+      @before_compile {IIIFImagePlug.V3, :add_send_error_fallback}
+
+      defoverridable scheme: 0,
+                     host: 0,
+                     port: 0,
+                     rights: 1,
+                     part_of: 1,
+                     see_also: 1,
+                     service: 1,
+                     send_error: 4
+    end
+  end
+
+  defmacro add_send_error_fallback(_env) do
+    quote do
+      def send_error(%Conn{} = conn, status_code, error_type, error_msg) do
+        IIIFImagePlug.V3.send_error(conn, status_code, error_type, error_msg)
+      end
+    end
+  end
+
   @default_preferred_format [:jpg]
   @default_extra_formats [:webp, :png, :tif]
 
@@ -128,61 +189,51 @@ defmodule IIIFImagePlug.V3 do
     end
 
     %Settings{
-      identifier_to_path_callback:
-        opts[:identifier_to_path_callback] ||
-          raise("Missing callback used to construct file path from identifier."),
-      scheme: opts[:scheme],
-      host: opts[:host],
-      port: opts[:port],
       max_width: opts[:max_width] || @default_max_width,
       max_height: opts[:max_height] || @default_max_height,
       max_area: opts[:max_area] || @default_max_area,
       temp_dir: temp_dir,
       preferred_formats: opts[:preferred_formats] || @default_preferred_format,
-      extra_formats: opts[:extra_formats] || @default_extra_formats,
-      identifier_to_rights_callback: opts[:identifier_to_rights_callback],
-      identifier_to_part_of_callback: opts[:identifier_to_part_of_callback],
-      identifier_to_see_also_callback: opts[:identifier_to_see_also_callback],
-      identifier_to_service_callback: opts[:identifier_to_service_callback],
-      status_callbacks: opts[:status_callbacks] || %{}
+      extra_formats: opts[:extra_formats] || @default_extra_formats
     }
   end
 
-  def call(%Plug.Conn{path_info: [identifier]} = conn, settings) do
+  def call(%Plug.Conn{path_info: [identifier]} = conn, _settings, module) do
     conn
     |> resp(:found, "")
     |> put_resp_header(
       "location",
-      "#{construct_id_url(conn, settings)}/#{identifier}/info.json"
+      "#{construct_image_id(conn, identifier, module)}/info.json"
     )
   end
 
   def call(
         %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
-        %Settings{status_callbacks: status_callbacks} = settings
+        settings,
+        module
       ) do
-    case Information.get(identifier, conn, settings) do
+    case generate_image_info(conn, identifier, settings, module) do
       {:ok, info} ->
         conn
         |> put_resp_content_type("application/ld+json")
         |> send_resp(200, Jason.encode!(info))
 
       {:error, :no_file} ->
-        send_error(
+        module.send_error(
           conn,
           404,
-          %{error: :no_file},
-          status_callbacks
+          :no_file,
+          nil
         )
 
       {:error, :no_image_file} ->
         Logger.error("File matching identifier '#{identifier}' could not be opened as an image.")
 
-        send_error(
+        module.send_error(
           conn,
           500,
-          %{},
-          status_callbacks
+          :internal_error,
+          nil
         )
     end
   end
@@ -192,10 +243,10 @@ defmodule IIIFImagePlug.V3 do
           path_info: [identifier, region, size, rotation, quality_and_format]
         } = conn,
         %Settings{
-          status_callbacks: status_callbacks,
           temp_dir: temp_dir
         } =
-          settings
+          settings,
+        module
       ) do
     case Data.get(
            identifier,
@@ -203,7 +254,8 @@ defmodule IIIFImagePlug.V3 do
            URI.decode(size),
            URI.decode(rotation),
            quality_and_format,
-           settings
+           settings,
+           module
          ) do
       {%Image{} = image, format} ->
         cond do
@@ -223,62 +275,44 @@ defmodule IIIFImagePlug.V3 do
         end
 
       {:error, :no_file} ->
-        send_error(
+        module.send_error(
           conn,
           404,
-          %{error: :no_file},
-          status_callbacks
+          :no_file,
+          nil
         )
 
       {:error, :no_image_file} ->
         Logger.error("File matching identifier '#{identifier}' could not be opened as an image.")
 
-        send_error(
+        module.send_error(
           conn,
           500,
-          %{},
-          status_callbacks
+          :internal_error,
+          nil
         )
 
-      {:error, msg} ->
-        send_error(
+      {:error, type} ->
+        module.send_error(
           conn,
           400,
-          %{error: msg},
-          status_callbacks
+          type,
+          nil
         )
     end
   end
 
   def call(
         conn,
-        %Settings{status_callbacks: callbacks}
+        _settings,
+        module
       ) do
-    send_error(
+    module.send_error(
       conn,
       404,
-      %{reason: "Unknown path.", path_info: conn.path_info},
-      callbacks
+      :unknown_route,
+      nil
     )
-  end
-
-  def construct_id_url(
-        %Conn{} = conn,
-        %Settings{
-          scheme: scheme_override,
-          host: host_override,
-          port: port_override
-        }
-      ) do
-    scheme = if scheme_override, do: scheme_override.(), else: conn.scheme
-    host = if host_override, do: host_override.(), else: conn.host
-    port = if port_override, do: port_override.(), else: conn.port
-
-    "#{scheme}://#{host}#{if port != nil do
-      ":#{port}"
-    else
-      ""
-    end}#{if conn.script_name != [], do: Path.join(["/"] ++ conn.script_name)}"
   end
 
   defp send_buffered(conn, %Image{} = image, format) do
@@ -315,17 +349,172 @@ defmodule IIIFImagePlug.V3 do
     end)
   end
 
-  defp send_error(conn, code, info, status_callbacks)
-       when is_map(info) and is_map(status_callbacks) do
-    if status_callbacks[code] do
-      status_callbacks[code].(conn, info)
-    else
-      conn
-      |> put_resp_content_type("application/json")
-      |> send_resp(
-        code,
-        Jason.encode!(info)
+  def send_error(conn, status_code, error_type, error_msg) do
+    body =
+      %{error: error_type}
+
+    body =
+      if error_msg do
+        Map.put(body, :error_msg, error_msg)
+      else
+        body
+      end
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(
+      status_code,
+      Jason.encode!(body)
+    )
+  end
+
+  def construct_image_id(
+        %Conn{} = conn,
+        identifier,
+        module
       )
+      when is_binary(identifier) do
+    scheme = module.scheme() || conn.scheme
+    host = module.host() || conn.scheme
+    port = module.port() || conn.port
+
+    Enum.join([
+      scheme,
+      "://",
+      host,
+      if(port != nil, do: ":#{port}", else: ""),
+      if(conn.script_name != [], do: Path.join(["/"] ++ conn.script_name), else: ""),
+      "/",
+      identifier
+    ])
+  end
+
+  def scheme(), do: nil
+  def host(), do: nil
+  def port(), do: nil
+
+  def generate_image_info(conn, identifier, settings, module) do
+    with {:identifier, {:ok, path}} <- {:identifier, module.identifier_to_path(identifier)},
+         {:file_exists, true} <- {:file_exists, File.exists?(path)},
+         {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)} do
+      {
+        :ok,
+        %{
+          "@context": "http://iiif.io/api/image/3/context.json",
+          id: "#{construct_image_id(conn, identifier, module)}",
+          type: "ImageService3",
+          protocol: "http://iiif.io/api/image",
+          width: Image.width(file),
+          height: Image.height(file),
+          profile: "level2",
+          maxHeight: settings.max_height,
+          maxWidth: settings.max_width,
+          maxArea: settings.max_area,
+          extra_features: [
+            "mirroring",
+            "regionByPct",
+            "regionByPx",
+            "regionSquare",
+            "rotationArbitrary",
+            "sizeByConfinedWh",
+            "sizeByH",
+            "sizeByPct",
+            "sizeByW",
+            "sizeByWh",
+            "sizeUpscaling"
+          ],
+          preferredFormat: settings.preferred_formats,
+          extraFormats: settings.extra_formats,
+          extraQualities: [:color, :gray, :bitonal]
+        }
+        |> maybe_add_rights(identifier, module)
+        |> maybe_add_part_of(identifier, module)
+        |> maybe_add_see_also(identifier, module)
+        |> maybe_add_service(identifier, module)
+        |> maybe_add_sizes(file, path)
+      }
+    else
+      {:identifier, _} ->
+        {:error, :unknown_identifier}
+
+      {:file_exists, false} ->
+        {:error, :no_file}
+
+      {:file_opened, _} ->
+        {:error, :no_image_file}
+    end
+  end
+
+  def rights(_identifier), do: {:ok, nil}
+  def part_of(_identifier), do: {:ok, []}
+  def see_also(_identifier), do: {:ok, []}
+  def service(_identifier), do: {:ok, []}
+
+  defp maybe_add_rights(%{} = info, identifier, module) do
+    case module.rights(identifier) do
+      {:ok, nil} -> info
+      {:ok, val} -> Map.put(info, :rights, val)
+      _ -> info
+    end
+  end
+
+  defp maybe_add_part_of(%{} = info, identifier, module) do
+    case module.part_of(identifier) do
+      {:ok, []} -> info
+      {:ok, val} -> Map.put(info, :part_of, val)
+      _ -> info
+    end
+  end
+
+  defp maybe_add_see_also(%{} = info, identifier, module) do
+    case module.see_also(identifier) do
+      {:ok, []} -> info
+      {:ok, val} -> Map.put(info, :see_also, val)
+      _ -> info
+    end
+  end
+
+  defp maybe_add_service(%{} = info, identifier, module) do
+    case module.service(identifier) do
+      {:ok, []} -> info
+      {:ok, val} -> Map.put(info, :service, val)
+      _ -> info
+    end
+  end
+
+  defp maybe_add_sizes(info, base_image, path) do
+    page_count =
+      try do
+        Image.n_pages(base_image)
+      rescue
+        _ -> 1
+      end
+
+    if page_count > 1 do
+      last_page = page_count - 1
+
+      sizes =
+        0..last_page
+        |> Stream.map(fn page ->
+          {:ok, page_image} = Image.new_from_file(path, page: page)
+
+          width = Image.width(page_image)
+          height = Image.height(page_image)
+
+          %{
+            type: "Size",
+            width: width,
+            height: height
+          }
+        end)
+        |> Stream.reject(fn %{width: width} ->
+          width == Image.width(base_image)
+        end)
+        |> Enum.sort_by(fn %{width: width} -> width end)
+
+      Map.put(info, :sizes, sizes)
+    else
+      info
     end
   end
 end
