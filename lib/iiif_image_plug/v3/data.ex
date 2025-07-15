@@ -2,12 +2,12 @@ defmodule IIIFImagePlug.V3.Data do
   alias Vix.Vips.Operation
   alias Vix.Vips.Image
 
-  alias IIIFImagePlug.V3.Size.Scaling
-  alias IIIFImagePlug.V3.Region.ExtractArea
-  alias IIIFImagePlug.V3.Quality
-  alias IIIFImagePlug.V3.Rotation
-  alias IIIFImagePlug.V3.Size
-  alias IIIFImagePlug.V3.Region
+  alias IIIFImagePlug.V3.Data.Size.Scaling
+  alias IIIFImagePlug.V3.Data.Region.ExtractArea
+  alias IIIFImagePlug.V3.Data.Quality
+  alias IIIFImagePlug.V3.Data.Rotation
+  alias IIIFImagePlug.V3.Data.Size
+  alias IIIFImagePlug.V3.Data.Region
 
   @moduledoc """
   Produces image data based on the given IIIF parameters and Plug settings.

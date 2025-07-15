@@ -114,7 +114,10 @@ defmodule IIIFImagePlug.V3Test do
             "label" => "Login to Example Institution",
             "profile" => "http://iiif.io/api/auth/1/login"
           }
-        ]
+        ],
+        "maxArea" => 100_000_000,
+        "maxHeight" => 10000,
+        "maxWidth" => 10000
       })
 
     conn = conn(:get, "/#{@sample_jpg_name}/info.json")

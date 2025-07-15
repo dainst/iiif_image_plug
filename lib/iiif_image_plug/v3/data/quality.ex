@@ -1,4 +1,4 @@
-defmodule IIIFImagePlug.V3.Quality do
+defmodule IIIFImagePlug.V3.Data.Quality do
   @moduledoc false
 
   alias Vix.Vips.{
@@ -6,9 +6,9 @@ defmodule IIIFImagePlug.V3.Quality do
     Image
   }
 
-  alias IIIFImagePlug.V3.Settings
+  alias IIIFImagePlug.V3.Options
 
-  def parse(quality_and_format, %Settings{
+  def parse(quality_and_format, %Options{
         preferred_formats: preferred_formats,
         extra_formats: extra_formats
       })
@@ -26,7 +26,7 @@ defmodule IIIFImagePlug.V3.Quality do
         end
 
       _ ->
-        :error
+        {:error, :invalid_quality_and_format}
     end
   end
 

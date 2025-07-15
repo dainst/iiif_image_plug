@@ -1,4 +1,4 @@
-defmodule IIIFImagePlug.V3.Region do
+defmodule IIIFImagePlug.V3.Data.Region do
   @moduledoc false
   defmodule ExtractArea do
     @moduledoc false

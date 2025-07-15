@@ -99,7 +99,7 @@ defmodule Custom404Plug do
   end
 
   @impl true
-  def send_error(%Plug.Conn{} = conn, 404, _error_code, _error_msg) do
+  def send_error(%Plug.Conn{} = conn, 404, _error_code) do
     conn
     |> put_resp_content_type("text/plain")
     |> send_resp(
