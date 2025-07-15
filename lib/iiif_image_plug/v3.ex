@@ -92,13 +92,19 @@ defmodule IIIFImagePlug.V3 do
 
   @callback identifier_to_path(identifier :: String.t()) ::
               {:ok, String.t()} | {:error, atom()}
+  @callback scheme() :: String.t() | nil
+  @callback host() :: String.t() | nil
+  @callback port() :: pos_integer() | nil
+  @callback rights(identifier :: String.t()) :: String.t() | nil
+  @callback part_of(identifier :: String.t()) :: list()
+  @callback see_also(identifier :: String.t()) :: list()
+  @callback service(identifier :: String.t()) :: list()
   @callback send_error(
               conn :: Conn.t(),
               status_code :: number(),
               error_code :: atom(),
               error_msg :: String.t()
-            ) ::
-              Conn.t() | no_return()
+            ) :: Conn.t()
 
   defmacro __using__(_opts) do
     #### do something with opts
@@ -427,40 +433,36 @@ defmodule IIIFImagePlug.V3 do
     end
   end
 
-  def rights(_identifier), do: {:ok, nil}
-  def part_of(_identifier), do: {:ok, []}
-  def see_also(_identifier), do: {:ok, []}
-  def service(_identifier), do: {:ok, []}
+  def rights(_identifier), do: nil
+  def part_of(_identifier), do: []
+  def see_also(_identifier), do: []
+  def service(_identifier), do: []
 
   defp maybe_add_rights(%{} = info, identifier, module) do
     case module.rights(identifier) do
-      {:ok, nil} -> info
-      {:ok, val} -> Map.put(info, :rights, val)
-      _ -> info
+      nil -> info
+      value -> Map.put(info, :rights, value)
     end
   end
 
   defp maybe_add_part_of(%{} = info, identifier, module) do
     case module.part_of(identifier) do
-      {:ok, []} -> info
-      {:ok, val} -> Map.put(info, :part_of, val)
-      _ -> info
+      [] -> info
+      values -> Map.put(info, :part_of, values)
     end
   end
 
   defp maybe_add_see_also(%{} = info, identifier, module) do
     case module.see_also(identifier) do
-      {:ok, []} -> info
-      {:ok, val} -> Map.put(info, :see_also, val)
-      _ -> info
+      [] -> info
+      values -> Map.put(info, :see_also, values)
     end
   end
 
   defp maybe_add_service(%{} = info, identifier, module) do
     case module.service(identifier) do
-      {:ok, []} -> info
-      {:ok, val} -> Map.put(info, :service, val)
-      _ -> info
+      [] -> info
+      values -> Map.put(info, :service, values)
     end
   end
 

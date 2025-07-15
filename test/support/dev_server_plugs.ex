@@ -7,10 +7,12 @@ defmodule DefaultPlug do
     {:ok, "test/images/#{identifier}"}
   end
 
+  @impl true
   def host() do
     "localhost"
   end
 
+  @impl true
   def port() do
     4000
   end
@@ -25,60 +27,55 @@ defmodule ExtraInfoPlug do
     {:ok, "test/images/#{identifier}"}
   end
 
+  @impl true
   def host() do
     "localhost"
   end
 
+  @impl true
   def port() do
     4000
   end
 
-  # TODO: Add identifier variants that fail.
-
+  @impl true
   def rights(_identifier) do
-    {:ok, "https://creativecommons.org/publicdomain/zero/1.0/"}
+    "https://creativecommons.org/publicdomain/zero/1.0/"
   end
 
+  @impl true
   def see_also(_identifier) do
-    {
-      :ok,
-      [
-        %{
-          id: "https://example.org/image1.xml",
-          label: %{en: ["Technical image metadata"]},
-          type: "Dataset",
-          format: "text/xml",
-          profile: "https://example.org/profiles/imagedata"
-        }
-      ]
-    }
+    [
+      %{
+        id: "https://example.org/image1.xml",
+        label: %{en: ["Technical image metadata"]},
+        type: "Dataset",
+        format: "text/xml",
+        profile: "https://example.org/profiles/imagedata"
+      }
+    ]
   end
 
+  @impl true
   def part_of(_identifier) do
-    {
-      :ok,
-      [
-        %{
-          id: "https://example.org/manifest/1",
-          type: "Manifest",
-          label: %{en: ["A Book"]}
-        }
-      ]
-    }
+    [
+      %{
+        id: "https://example.org/manifest/1",
+        type: "Manifest",
+        label: %{en: ["A Book"]}
+      }
+    ]
   end
 
+  @impl true
   def service(_identifier) do
-    {
-      :ok,
-      [
-        %{
-          "@id": "https://example.org/auth/login",
-          "@type": "AuthCookieService1",
-          profile: "http://iiif.io/api/auth/1/login",
-          label: "Login to Example Institution"
-        }
-      ]
-    }
+    [
+      %{
+        "@id": "https://example.org/auth/login",
+        "@type": "AuthCookieService1",
+        profile: "http://iiif.io/api/auth/1/login",
+        label: "Login to Example Institution"
+      }
+    ]
   end
 end
 
@@ -91,10 +88,12 @@ defmodule Custom404Plug do
     {:ok, "test/images/#{identifier}"}
   end
 
+  @impl true
   def host() do
     "localhost"
   end
 
+  @impl true
   def port() do
     4000
   end
