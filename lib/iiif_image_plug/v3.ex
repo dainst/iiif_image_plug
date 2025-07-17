@@ -16,15 +16,65 @@ defmodule IIIFImagePlug.V3 do
   This plug implements the IIIF Image API version 3 (see also https://iiif.io/api/image/3.0).
   """
 
+  @doc """
+  __Required__ callback function that resolves a given IIIF identifier to a file path (string).
+  """
   @callback identifier_to_path(identifier :: String.t()) ::
               {:ok, String.t()} | {:error, atom()}
+
+  @doc """
+  __Optional__ callback function to override the scheme evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+  """
   @callback scheme() :: String.t() | nil
+
+  @doc """
+  __Optional__ callback function to override the host evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+  """
   @callback host() :: String.t() | nil
+
+  @doc """
+  __Optional__ callback function to override the port evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+  """
   @callback port() :: pos_integer() | nil
+
+  @doc """
+  __Optional__ callback function that returns a [rights](https://iiif.io/api/image/3.0/#56-rights) statement for a given identifier. If
+  `nil` is returned, the _rights_ key will be omitted in the _info.json_.
+  """
   @callback rights(identifier :: String.t()) :: String.t() | nil
+
+  @doc """
+  __Optional__ callback function that returns a list of [part of](https://iiif.io/api/image/3.0/#58-linking-properties) properties for
+  a given identifier. If an empty list is returned, the _partOf_ key will be omitted in the _info.json_.
+  """
   @callback part_of(identifier :: String.t()) :: list()
+
+  @doc """
+  __Optional__ callback function that returns a list of [see also](https://iiif.io/api/image/3.0/#58-linking-properties) properties for
+  a given identifier. If an empty list is returned, the _seeAlso_ key will be omitted in the _info.json_.
+  """
   @callback see_also(identifier :: String.t()) :: list()
+
+  @doc """
+  __Optional__ callback function that returns a list of [service](https://iiif.io/api/image/3.0/#58-linking-properties) properties for
+  a given identifier. If an empty list is returned, the _service_ key will be omitted in the _info.json_.
+  """
   @callback service(identifier :: String.t()) :: list()
+
+  @doc """
+  __Optional__ callback function that lets you override the default plug error response, which is defined as follows:
+
+      def send_error(conn, status_code, error_type) do
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(
+          status_code,
+          Jason.encode!(%{error: error_type})
+        )
+      end
+
+  One use case might be sending your own placeholder image instead of the JSON for failed image requests.
+  """
   @callback send_error(
               conn :: Conn.t(),
               status_code :: number(),
