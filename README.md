@@ -31,36 +31,33 @@ end
 Assuming you want to serve IIIF in your plug based server at "/iiif/v3", add a forward route like this: 
 
 ```elixir
-  forward("/iiif/v3",
-    to: IIIFImagePlug.V3,
-    init_opts: %{
-      identifier_to_path_callback: &ImageStore.identifier_to_path/1
-    }
-  )
+  forward("/iiif/v3", to: MyApp.IIIFPlug, init_opts: %IIIFImagePlug.V3.Options{})
 ```
 
-### Phoenix
-For [Phoenix](https://www.phoenixframework.org/) it would look slightly different:
+For [Phoenix](https://www.phoenixframework.org/) it would be slightly different:
 
 ```elixir
-  forward("/iiif/v3", IIIFImagePlug.V3, %{
-    identifier_to_path_callback: &ImageStore.identifier_to_path/1
-  })
+  forward("/iiif/v3", MyApp.IIIFPlug, %IIIFImagePlug.V3.Options{})
 ```
 
-The option `:identifier_to_path_callback` lets the plug map the IIIF [identifier](https://iiif.io/api/image/3.0/#21-image-request-uri-syntax) to an actual file path in your file system. 
+For the complete list of plug options have a look at the module documentation for `IIIFImagePlug.V3.Options`.
 
-`ImageStore.identifier_to_path/1` in this case might look something like this:
+A minimal plug implementation in your app might look like this:
 
 ```elixir
+defmodule MyApp.IIIFPlug do
+  use IIIFImagePlug.V3
+
+  @impl true
   def identifier_to_path(identifier) do
-    "/mnt/my_app_images/#{identifier}"
+    {:ok, "test/images/#{identifier}"}
   end
+end
 ```
 
-A GET request `/iiif/v3/sample_image.jpg/info.json` would then cause the plug to look for an image file at `/mnt/my_app_images/sample_image.jpg` and return its metadata.
+The callback function `identifier_to_path/1` is required and lets the plug map the IIIF [identifier](https://iiif.io/api/image/3.0/#21-image-request-uri-syntax) to an actual file path in your file system. A GET request `/iiif/v3/sample_image.jpg/info.json` would then cause the plug to look for an image file at `/mnt/my_app_images/sample_image.jpg` and return its metadata.
 
-For the complete list of plug options have a look at the module documentation.
+There are also a range of optional callbacks to customize your plug, again have a look at the module documentation for `IIIFImagePlug.V3`.
 
 ### CORS 
 

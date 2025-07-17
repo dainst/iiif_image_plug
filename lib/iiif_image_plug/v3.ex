@@ -23,7 +23,8 @@ defmodule IIIFImagePlug.V3 do
               {:ok, String.t()} | {:error, atom()}
 
   @doc """
-  __Optional__ callback function to override the scheme evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+  __Optional__ callback function to override the scheme (https or https) evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a
+  proxy.
   """
   @callback scheme() :: String.t() | nil
 

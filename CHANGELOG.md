@@ -3,6 +3,8 @@
 ## 1.0.0
 - Requested TIF image images are now written to a temporary file instead of to memory by default. 
 - Also a new plug option `:temp_dir` was added to define a custom temporary directory path for the generated TIF files. In memory creation is still possible by passing `:buffer` instead.
+- Added support for `:raw` and `:vips` image output formats.
+- Rewrote the core V3 plug module to support the `use` keyword instead of having to pass callback functions as options.
 
 ## 0.5.0
 - Changed override options `:port`, `:host` and `:scheme` into callbacks to make values configurable at runtime.
