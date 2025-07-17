@@ -105,10 +105,10 @@ defmodule IIIFImagePlug.V3 do
 
       # See https://dockyard.com/blog/2024/04/18/use-macro-with-defoverridable-function-fallbacks
       #
-      # Basically if no `send_error/3` is defined by the user of the library, this will use the `send_error/3`
-      # defined in the V3 module below. If the user creates a custom implementation, this would normally 100%
-      # replace the default. Because we want to give the users the opportunity to customize only specific
-      # errors, the @before_compile below will re-add our defaults as a fallback.
+      # Basically if no `send_error/3` is defined by the user of the library, the plug will use the default
+      # `send_error/3` defined in the V3 module below. If the user creates a custom implementation, this would
+      # normally 100% replace the default. Because we want to give the users the opportunity to customize only specific
+      # errors (based on pattern matching), the @before_compile below will re-add our defaults as a fallback.
 
       def send_error(%Conn{} = conn, status_code, error_type) do
         IIIFImagePlug.V3.send_error(conn, status_code, error_type)
