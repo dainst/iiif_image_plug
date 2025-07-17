@@ -181,6 +181,8 @@ defmodule IIIFImagePlug.V3 do
     end
   end
 
+  @streamable ["jpg", "webp", "gif", "png"]
+
   def call(
         %Plug.Conn{
           path_info: [identifier, region, size, rotation, quality_and_format]
@@ -202,10 +204,10 @@ defmodule IIIFImagePlug.V3 do
          ) do
       {%Image{} = image, format} ->
         cond do
-          format == "tif" and temp_dir == :buffer ->
+          format not in @streamable and temp_dir == :buffer ->
             send_buffered(conn, image, format)
 
-          format == "tif" ->
+          format not in @streamable ->
             prefix = :crypto.strong_rand_bytes(8) |> Base.url_encode64() |> binary_part(0, 8)
 
             file_name =
