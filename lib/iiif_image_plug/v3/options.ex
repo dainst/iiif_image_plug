@@ -2,6 +2,13 @@ defmodule IIIFImagePlug.V3.Options do
   @moduledoc """
   Defines the IIIFImagePlug.V3 plug options.
 
+  The plug relies on [Vix](https://hex.pm/packages/vix) package for the image processing, which includes a
+  precompiled libvips binary out of the box (Linux/MacOS). The possible values for `:preferred_formats` and
+  `extra_formats` thus are currently as follows: `[:jpg, :png, :webp, :tif, :gif, :raw, :vips]`.
+
+  You can configure Vix to use your own installation of libvips if you need other formats, see the
+  [Vix documentation](https://hexdocs.pm/vix/readme.html#content).
+
   ## Options
 
   ### `:max_width` (default: `10000`)
@@ -16,7 +23,7 @@ defmodule IIIFImagePlug.V3.Options do
   ### `:preferred_formats` (default: `[:jpg]`)
   The [preferred formats](https://iiif.io/api/image/3.0/#55-preferred-formats) to be used for your service.
 
-  ### `:extra_formats` (default: `[:png, :webp, :tif]`)
+  ### `:extra_formats` (default: `[:webp, :png]`)
   The [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your service can deliver.
 
   ### `:temp_dir` (default: `uses System.tmp_dir!/0`)
@@ -37,7 +44,7 @@ defmodule IIIFImagePlug.V3.Options do
             max_height: 10000,
             max_area: 10000 * 10000,
             preferred_formats: [:jpg],
-            extra_formats: [:webp, :png, :tif],
+            extra_formats: [:webp, :png],
             temp_dir: Path.join(System.tmp_dir!(), "iiif_image_plug")
 
   @type t :: %__MODULE__{

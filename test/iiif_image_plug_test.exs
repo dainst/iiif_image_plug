@@ -117,7 +117,8 @@ defmodule IIIFImagePlug.V3Test do
         ],
         "maxArea" => 100_000_000,
         "maxHeight" => 10000,
-        "maxWidth" => 10000
+        "maxWidth" => 10000,
+        "extraFormats" => ["webp", "png"]
       })
 
     conn = conn(:get, "/#{@sample_jpg_name}/info.json")

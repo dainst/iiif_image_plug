@@ -17,7 +17,8 @@ defmodule DevServerRouter do
   forward("/buffered_tiffs",
     to: DefaultPlug,
     init_opts: %Options{
-      temp_dir: :buffer
+      temp_dir: :buffer,
+      extra_formats: [:tif]
     }
   )
 
@@ -43,7 +44,8 @@ defmodule DevServerRouter do
     init_opts: %Options{
       max_width: 600,
       max_height: 400,
-      max_area: 600 * 400
+      max_area: 600 * 400,
+      extra_formats: [:webp, :png, :tif]
     }
   )
 end
