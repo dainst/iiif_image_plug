@@ -2,6 +2,8 @@
 
 ## Input 
 
+### Pyramid TIF
+
 The performance is greatly improved if you provide your images in more than one resolution. This can be accomplished by providing image pyramids. Using `vips8` you can generate a TIF file pyramid:
 
 ```bash
@@ -30,7 +32,9 @@ The IIIF Image plug will automatically evaluate these pages and select the best 
 
 ## Output
 
-Some image formats can not be streamed, see the documentation for the `IIIFImagePlug.V3.Options` module.
+### TIF
+
+If you want to allow the user to _request_ tif images, be aware these can not be streamed and are written to a temporary file for each request by default. It is also possible to force the plug to write the complete image to memory instead, but this might cause memory issues for very large images. See the `:temp_dir` plug option.
 
 ## Alternatives to this library
 
