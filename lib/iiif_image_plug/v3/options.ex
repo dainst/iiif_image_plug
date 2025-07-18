@@ -38,6 +38,19 @@ defmodule IIIFImagePlug.V3.Options do
   If you want to forgo this file creation, you can set this option to `:buffer` instead of a file path. This will configure
   the plug to write the complete image to memory instead of disk - which is faster but also may cause memory issues if
   very large images are requested.
+
+  ### `:cache_control` (optional)
+
+  Sets the Cache-Control header for all image responses. For example:
+  - `"public, max-age=31536000, immutable"` for long-term caching
+  - `"private, max-age=3600"` for short-term private caching
+  - `nil` (default) to not set any cache headers
+
+  ### `:identifier_to_cache_control_callback` (optional)
+
+  An arity 1 callback function that returns a Cache-Control header value for a given identifier.
+  This allows dynamic cache control based on the image being served. If both this and `:cache_control`
+  are provided, this callback takes precedence.
   """
 
   defstruct max_width: 10000,
@@ -45,7 +58,9 @@ defmodule IIIFImagePlug.V3.Options do
             max_area: 10000 * 10000,
             preferred_formats: [:jpg],
             extra_formats: [:webp, :png],
-            temp_dir: Path.join(System.tmp_dir!(), "iiif_image_plug")
+            temp_dir: Path.join(System.tmp_dir!(), "iiif_image_plug"),
+            cache_control: nil,
+            identifier_to_cache_control_callback: nil
 
   @type t :: %__MODULE__{
           max_width: integer(),
@@ -53,6 +68,8 @@ defmodule IIIFImagePlug.V3.Options do
           max_area: integer(),
           preferred_formats: list(),
           extra_formats: list(),
-          temp_dir: String.t() | atom()
+          temp_dir: String.t() | atom(),
+          cache_control: String.t() | nil,
+          identifier_to_cache_control_callback: (String.t() -> String.t() | nil) | nil
         }
 end
