@@ -219,7 +219,7 @@ defmodule IIIFImagePlug.V3Test do
   describe "image data endpoint" do
     test "returns the expected image data for the different test images" do
       get_expected_file_paths()
-      |> Enum.each(fn {file_name, path} ->
+      |> Task.async_stream(fn {file_name, path} ->
         conn = conn(:get, "/#{file_name}/#{path}" |> URI.encode())
 
         conn = DevServerRouter.call(conn, @opts)
@@ -251,6 +251,7 @@ defmodule IIIFImagePlug.V3Test do
             assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
         end
       end)
+      |> Enum.to_list()
     end
 
     test "returns the correct image data of the rectangle provided by the official validator" do
