@@ -180,7 +180,7 @@ defmodule IIIFImagePlug.V3 do
       {%Image{} = image, format} ->
         cond do
           format not in @streamable and temp_dir == :buffer ->
-            send_buffered(conn, image, format)
+            send_buffered(conn, image, format, identifier, options)
 
           format not in @streamable ->
             prefix = :crypto.strong_rand_bytes(8) |> Base.url_encode64() |> binary_part(0, 8)
@@ -188,10 +188,10 @@ defmodule IIIFImagePlug.V3 do
             file_name =
               "#{prefix}_#{quality_and_format}"
 
-            send_temporary_file(conn, image, Path.join(temp_dir, file_name))
+            send_temporary_file(conn, image, Path.join(temp_dir, file_name), identifier, options)
 
           true ->
-            send_stream(conn, image, format)
+            send_stream(conn, image, format, identifier, options)
         end
 
       {:error, :no_file} ->
@@ -231,12 +231,15 @@ defmodule IIIFImagePlug.V3 do
     )
   end
 
-  defp send_buffered(conn, %Image{} = image, format) do
+  defp send_buffered(conn, %Image{} = image, format, identifier, options) do
     {:ok, buffer} = Image.write_to_buffer(image, ".#{format}")
-    send_resp(conn, 200, buffer)
+
+    conn
+    |> maybe_put_cache_headers(identifier, options)
+    |> send_resp(200, buffer)
   end
 
-  defp send_temporary_file(conn, %Image{} = image, file_path) do
+  defp send_temporary_file(conn, %Image{} = image, file_path, identifier, options) do
     parent = self()
 
     spawn(fn ->
@@ -249,13 +252,19 @@ defmodule IIIFImagePlug.V3 do
     end)
 
     Image.write_to_file(image, file_path)
-    send_file(conn, 200, file_path)
+
+    conn
+    |> maybe_put_cache_headers(identifier, options)
+    |> send_file(200, file_path)
   end
 
-  defp send_stream(conn, %Image{} = image, format) do
+  defp send_stream(conn, %Image{} = image, format, identifier, options) do
     stream = Image.write_to_stream(image, ".#{format}")
 
-    conn = send_chunked(conn, 200)
+    conn =
+      conn
+      |> maybe_put_cache_headers(identifier, options)
+      |> send_chunked(200)
 
     Enum.reduce_while(stream, conn, fn data, conn ->
       case chunk(conn, data) do
@@ -277,4 +286,30 @@ defmodule IIIFImagePlug.V3 do
   def scheme(), do: nil
   def host(), do: nil
   def port(), do: nil
+
+  defp maybe_put_cache_headers(conn, identifier, %Options{
+         cache_control: cache_control,
+         identifier_to_cache_control_callback: callback
+       }) do
+    cache_header_value =
+      cond do
+        # Callback takes precedence
+        is_function(callback, 1) ->
+          callback.(identifier)
+
+        # Static cache control
+        is_binary(cache_control) ->
+          cache_control
+
+        # No cache control configured
+        true ->
+          nil
+      end
+
+    if cache_header_value do
+      put_resp_header(conn, "cache-control", cache_header_value)
+    else
+      conn
+    end
+  end
 end

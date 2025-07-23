@@ -1,6 +1,6 @@
 # Performance considerations
 
-## Input 
+## Input
 
 The performance is greatly improved if you provide your images in more than one resolution. This can be accomplished by providing image pyramids. Using `vips8` you can generate a TIF file pyramid:
 
