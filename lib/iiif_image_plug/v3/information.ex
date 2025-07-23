@@ -4,18 +4,7 @@ defmodule IIIFImagePlug.V3.Information do
 
   alias IIIFImagePlug.V3.IdentifierInfo
 
-  @moduledoc """
-  Produces image metadata (info.json).
-  """
-
-  @doc """
-  Get the IIIF `info.json` for the image defined by `identifier` with respect to the plug's settings.
-
-  Returns
-  - `info` as an Elixir map on success.
-  - `{:error, :no_file}` if the identifier did not point to a file.
-  - `{:error, :no_image_file}` if the identifier did not point to a file.
-  """
+  @moduledoc false
 
   def generate_image_info(conn, identifier, options, module) do
     with {

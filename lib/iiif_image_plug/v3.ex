@@ -19,13 +19,13 @@ defmodule IIIFImagePlug.V3 do
   """
 
   @doc """
-  __Required__ callback function that maps a given identifier to an `%IdentifierInfo{}` struct.
+  __Required__ callback function that maps a given _identifier_ to an `%IdentifierInfo{}` struct.
   """
   @callback identifier_info(identifier :: String.t()) ::
               {:ok, IdentifierInfo.t()} | {:error, any()}
 
   @doc """
-  __Required__ callback function that maps a given identifier to a file path.
+  __Required__ callback function that maps a given _identifier_ to a local file path.
   """
   @callback(identifier_path(identifier :: String.t()) :: {:ok, String.t()} | :error, any())
 

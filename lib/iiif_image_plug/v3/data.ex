@@ -13,19 +13,7 @@ defmodule IIIFImagePlug.V3.Data do
     Quality
   }
 
-  @moduledoc """
-  Produces image data based on the given IIIF parameters and Plug settings.
-  """
-
-  @doc """
-  Get a transformed version of the image defined by `identifier` and the other provided parameters,
-  validated against the plug's settings.
-
-  Returns
-  - `{%Vix.Vips.Image{}, format}` on success, where format is one of the preferred or extra format atoms defined
-  in the plug settings.
-  - `{:error, reason}` if a parameter was invalid.
-  """
+  @moduledoc false
   def get(
         identifier,
         region_param,
