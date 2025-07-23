@@ -47,7 +47,7 @@ defmodule IIIFImagePlug.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:plug, "~> 1.16"},
+      {:plug, "~> 1.18"},
       {:vix, "~> 0.33.0"},
       {:jason, "~> 1.4"},
       {:bandit, "~> 1.6", only: [:test, :dev]},
