@@ -1,4 +1,6 @@
 defmodule IIIFImagePlug.V3.Data do
+  import Plug.Conn
+
   alias Vix.Vips.{
     Image,
     Operation
@@ -13,8 +15,11 @@ defmodule IIIFImagePlug.V3.Data do
     Quality
   }
 
-  @moduledoc false
+  @enforce_keys :path
+  defstruct [:path, response_headers: []]
+
   def get(
+        conn,
         identifier,
         region_param,
         size_param,
@@ -23,7 +28,8 @@ defmodule IIIFImagePlug.V3.Data do
         settings,
         module
       ) do
-    {:ok, path} = module.identifier_path(identifier)
+    {:ok, %__MODULE__{path: path, response_headers: headers}} =
+      module.identifier_path(identifier)
 
     with {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},
@@ -58,7 +64,13 @@ defmodule IIIFImagePlug.V3.Data do
 
       case transform(file, region_param, size_param, rotation_param, quality, pages, settings) do
         %Image{} = image ->
-          {image, format}
+          {
+            Enum.reduce(headers, conn, fn {key, value}, acc ->
+              put_resp_header(acc, key, value)
+            end),
+            image,
+            format
+          }
 
         error ->
           error

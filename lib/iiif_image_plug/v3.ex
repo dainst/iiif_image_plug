@@ -4,7 +4,6 @@ defmodule IIIFImagePlug.V3 do
   alias Vix.Vips.Image
 
   alias IIIFImagePlug.V3.{
-    IdentifierInfo,
     Information,
     Options,
     Data
@@ -19,10 +18,10 @@ defmodule IIIFImagePlug.V3 do
   """
 
   @doc """
-  __Required__ callback function that maps a given _identifier_ to an `%IdentifierInfo{}` struct.
+  __Required__ callback function that maps a given _identifier_ to an `%Information{}` struct.
   """
   @callback identifier_info(identifier :: String.t()) ::
-              {:ok, IdentifierInfo.t()} | {:error, any()}
+              {:ok, Information.t()} | {:error, any()}
 
   @doc """
   __Required__ callback function that maps a given _identifier_ to a local file path.
@@ -133,7 +132,7 @@ defmodule IIIFImagePlug.V3 do
         module
       ) do
     case Information.generate_image_info(conn, identifier, options, module) do
-      {:ok, info} ->
+      {:ok, {conn, info}} ->
         conn
         |> put_resp_content_type("application/ld+json")
         |> send_resp(200, Jason.encode!(info))
@@ -169,6 +168,7 @@ defmodule IIIFImagePlug.V3 do
         module
       ) do
     case Data.get(
+           conn,
            identifier,
            URI.decode(region),
            URI.decode(size),
@@ -177,10 +177,10 @@ defmodule IIIFImagePlug.V3 do
            options,
            module
          ) do
-      {%Image{} = image, format} ->
+      {%Plug.Conn{} = conn, %Image{} = image, format} ->
         cond do
           format not in @streamable and temp_dir == :buffer ->
-            send_buffered(conn, image, format, identifier, options)
+            send_buffered(conn, image, format)
 
           format not in @streamable ->
             prefix = :crypto.strong_rand_bytes(8) |> Base.url_encode64() |> binary_part(0, 8)
@@ -188,10 +188,10 @@ defmodule IIIFImagePlug.V3 do
             file_name =
               "#{prefix}_#{quality_and_format}"
 
-            send_temporary_file(conn, image, Path.join(temp_dir, file_name), identifier, options)
+            send_temporary_file(conn, image, Path.join(temp_dir, file_name))
 
           true ->
-            send_stream(conn, image, format, identifier, options)
+            send_stream(conn, image, format)
         end
 
       {:error, :no_file} ->
@@ -231,15 +231,13 @@ defmodule IIIFImagePlug.V3 do
     )
   end
 
-  defp send_buffered(conn, %Image{} = image, format, identifier, options) do
+  defp send_buffered(conn, %Image{} = image, format) do
     {:ok, buffer} = Image.write_to_buffer(image, ".#{format}")
 
-    conn
-    |> maybe_put_cache_headers(identifier, options)
-    |> send_resp(200, buffer)
+    send_resp(conn, 200, buffer)
   end
 
-  defp send_temporary_file(conn, %Image{} = image, file_path, identifier, options) do
+  defp send_temporary_file(conn, %Image{} = image, file_path) do
     parent = self()
 
     spawn(fn ->
@@ -253,18 +251,13 @@ defmodule IIIFImagePlug.V3 do
 
     Image.write_to_file(image, file_path)
 
-    conn
-    |> maybe_put_cache_headers(identifier, options)
-    |> send_file(200, file_path)
+    send_file(conn, 200, file_path)
   end
 
-  defp send_stream(conn, %Image{} = image, format, identifier, options) do
+  defp send_stream(conn, %Image{} = image, format) do
     stream = Image.write_to_stream(image, ".#{format}")
 
-    conn =
-      conn
-      |> maybe_put_cache_headers(identifier, options)
-      |> send_chunked(200)
+    conn = send_chunked(conn, 200)
 
     Enum.reduce_while(stream, conn, fn data, conn ->
       case chunk(conn, data) do
@@ -287,29 +280,29 @@ defmodule IIIFImagePlug.V3 do
   def host(), do: nil
   def port(), do: nil
 
-  defp maybe_put_cache_headers(conn, identifier, %Options{
-         cache_control: cache_control,
-         identifier_to_cache_control_callback: callback
-       }) do
-    cache_header_value =
-      cond do
-        # Callback takes precedence
-        is_function(callback, 1) ->
-          callback.(identifier)
+  # defp maybe_put_cache_headers(conn, identifier, %Options{
+  #        cache_control: cache_control,
+  #        identifier_to_cache_control_callback: callback
+  #      }) do
+  #   cache_header_value =
+  #     cond do
+  #       # Callback takes precedence
+  #       is_function(callback, 1) ->
+  #         callback.(identifier)
 
-        # Static cache control
-        is_binary(cache_control) ->
-          cache_control
+  #       # Static cache control
+  #       is_binary(cache_control) ->
+  #         cache_control
 
-        # No cache control configured
-        true ->
-          nil
-      end
+  #       # No cache control configured
+  #       true ->
+  #         nil
+  #     end
 
-    if cache_header_value do
-      put_resp_header(conn, "cache-control", cache_header_value)
-    else
-      conn
-    end
-  end
+  #   if cache_header_value do
+  #     put_resp_header(conn, "cache-control", cache_header_value)
+  #   else
+  #     conn
+  #   end
+  # end
 end

@@ -439,6 +439,75 @@ defmodule IIIFImagePlug.V3Test do
 
       assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
     end
+
+    test "sets response headers for image info when configured" do
+      conn = conn(:get, "/custom_response_headers/#{@sample_jpg_name}/info.json")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == [
+               "public, max-age=31536000, immutable"
+             ]
+
+      conn = conn(:get, "/custom_response_headers/private_image.jpg/info.json")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == ["private, max-age=3600"]
+    end
+
+    test "sets response headers for image data when configured" do
+      conn = conn(:get, "/custom_response_headers/#{@sample_jpg_name}/full/max/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == [
+               "public, max-age=31536000, immutable"
+             ]
+
+      conn = conn(:get, "/custom_response_headers/private_image.jpg/full/max/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == ["private, max-age=3600"]
+    end
+
+    test "does not set response headers for redirects" do
+      conn = conn(:get, "/custom_response_headers/#{@sample_jpg_name}")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :set]
+      assert conn.status == 302
+      # Redirects should not have our custom cache headers
+      cache_control_headers = Plug.Conn.get_resp_header(conn, "cache-control")
+      refute "public, max-age=31536000, immutable" in cache_control_headers
+    end
+
+    test "does not set response headers for errors" do
+      conn = conn(:get, "/nonexistent.jpg/full/max/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 404
+
+      # The test plug seems to set default headers, we just care that our custom headers aren't set
+      cache_control_headers = Plug.Conn.get_resp_header(conn, "cache-control")
+      refute "public, max-age=31536000, immutable" in cache_control_headers
+    end
   end
 
   defp get_expected_file_paths() do

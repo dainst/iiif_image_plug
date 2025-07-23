@@ -1,22 +1,44 @@
 defmodule IIIFImagePlug.V3.Information do
+  import Plug.Conn
   alias Plug.Conn
   alias Vix.Vips.Image
 
-  alias IIIFImagePlug.V3.IdentifierInfo
+  @moduledoc """
+  This struct is used for generating an image's `info.json` that is being served by the `IIIFImagePlug.V3` plug.
 
-  @moduledoc false
+  ## Fields
 
+  - `:path` (required) your local file system path to the image file.
+  - `:rights` (optional) the [rights](https://iiif.io/api/image/3.0/#56-rights) statement for the given image.
+  - `:part_of` (optional) the _partOf_ [linking property](https://iiif.io/api/image/3.0/#58-linking-properties) for the image.
+  - `:see_also` (optional) the _seeAlso_ [linking property](https://iiif.io/api/image/3.0/#58-linking-properties) for the image.
+  - `:service` (optional) the _service_ [linking property](https://iiif.io/api/image/3.0/#58-linking-properties) for the image.
+  """
+
+  @enforce_keys :path
+  defstruct [:path, :rights, part_of: [], see_also: [], service: [], response_headers: []]
+
+  @type t :: %__MODULE__{
+          path: String.t(),
+          rights: String.t() | nil,
+          part_of: list(),
+          see_also: list(),
+          service: list()
+        }
+
+  @doc false
   def generate_image_info(conn, identifier, options, module) do
     with {
            :identifier,
            {
              :ok,
-             %IdentifierInfo{
+             %__MODULE__{
                path: path,
                rights: rights,
                part_of: part_of,
                see_also: see_also,
-               service: service
+               service: service,
+               response_headers: headers
              }
            }
          } <-
@@ -28,39 +50,44 @@ defmodule IIIFImagePlug.V3.Information do
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)} do
       {
         :ok,
-        %{
-          "@context": "http://iiif.io/api/image/3/context.json",
-          id: "#{construct_image_id(conn, identifier, module)}",
-          type: "ImageService3",
-          protocol: "http://iiif.io/api/image",
-          width: Image.width(file),
-          height: Image.height(file),
-          profile: "level2",
-          maxHeight: options.max_height,
-          maxWidth: options.max_width,
-          maxArea: options.max_area,
-          extra_features: [
-            "mirroring",
-            "regionByPct",
-            "regionByPx",
-            "regionSquare",
-            "rotationArbitrary",
-            "sizeByConfinedWh",
-            "sizeByH",
-            "sizeByPct",
-            "sizeByW",
-            "sizeByWh",
-            "sizeUpscaling"
-          ],
-          preferredFormat: options.preferred_formats,
-          extraFormats: options.extra_formats,
-          extraQualities: [:color, :gray, :bitonal]
+        {
+          Enum.reduce(headers, conn, fn {key, value}, acc ->
+            put_resp_header(acc, key, value)
+          end),
+          %{
+            "@context": "http://iiif.io/api/image/3/context.json",
+            id: "#{construct_image_id(conn, identifier, module)}",
+            type: "ImageService3",
+            protocol: "http://iiif.io/api/image",
+            width: Image.width(file),
+            height: Image.height(file),
+            profile: "level2",
+            maxHeight: options.max_height,
+            maxWidth: options.max_width,
+            maxArea: options.max_area,
+            extra_features: [
+              "mirroring",
+              "regionByPct",
+              "regionByPx",
+              "regionSquare",
+              "rotationArbitrary",
+              "sizeByConfinedWh",
+              "sizeByH",
+              "sizeByPct",
+              "sizeByW",
+              "sizeByWh",
+              "sizeUpscaling"
+            ],
+            preferredFormat: options.preferred_formats,
+            extraFormats: options.extra_formats,
+            extraQualities: [:color, :gray, :bitonal]
+          }
+          |> maybe_add_info(:rights, rights)
+          |> maybe_add_info(:partOf, part_of)
+          |> maybe_add_info(:seeAlso, see_also)
+          |> maybe_add_info(:service, service)
+          |> maybe_add_sizes(file, path)
         }
-        |> maybe_add_info(:rights, rights)
-        |> maybe_add_info(:partOf, part_of)
-        |> maybe_add_info(:seeAlso, see_also)
-        |> maybe_add_info(:service, service)
-        |> maybe_add_sizes(file, path)
       }
     else
       {:identifier, _} ->
@@ -74,6 +101,7 @@ defmodule IIIFImagePlug.V3.Information do
     end
   end
 
+  @doc false
   def construct_image_id(
         %Conn{} = conn,
         identifier,

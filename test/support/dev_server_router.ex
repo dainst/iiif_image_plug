@@ -39,6 +39,11 @@ defmodule DevServerRouter do
     init_opts: %Options{}
   )
 
+  forward("/custom_response_headers",
+    to: CustomResponseHeaderPlug,
+    init_opts: %Options{}
+  )
+
   forward("/",
     to: DefaultPlug,
     init_opts: %Options{
