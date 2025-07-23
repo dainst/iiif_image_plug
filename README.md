@@ -21,7 +21,7 @@ by adding `iiif_image_plug` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:iiif_image_plug, "~> 0.5.0"}
+    {:iiif_image_plug, "~> 1.0.0"}
   ]
 end
 ```
@@ -47,15 +47,28 @@ defmodule MyApp.IIIFPlug do
   use IIIFImagePlug.V3
 
   @impl true
+  def identifier_info(identifier) do
+    # This callback implementation is used to generate the `info.json` for a given identifier.
+    {
+      :ok,
+      %IIIFImagePlug.V3.IdentifierInfo{
+        path: "test/images/#{identifier}",
+        rights: "https://creativecommons.org/publicdomain/zero/1.0/" # optional, see docs.
+      }
+    }
+  end
+
+  @impl true
   def identifier_to_path(identifier) do
-    {:ok, "test/images/#{identifier}"}
+    # This callback implementation returns only the path to the identified image and is used when serving 
+    # actual image data.
+    {
+      :ok,
+      "test/images/#{identifier}"
+    }
   end
 end
 ```
-
-The callback function `identifier_to_path/1` is required and lets the plug map the IIIF [identifier](https://iiif.io/api/image/3.0/#21-image-request-uri-syntax) to an actual file path in your file system. A GET request `/iiif/v3/sample_image.jpg/info.json` would then cause the plug to look for an image file at `/mnt/my_app_images/sample_image.jpg` and return its metadata.
-
-There are also a range of optional callbacks to customize your plug, again have a look at the module documentation for `IIIFImagePlug.V3`.
 
 ### CORS 
 
@@ -69,10 +82,8 @@ For your service to fully implement the API specification, you need to properly 
   plug(:dispatch)
 
   forward("/",
-    to: IIIFImagePlug.V3,
-    init_opts: %{
-      (..)
-    }
+    to: MyApp.IIIFPlug,
+    init_opts: (..)
   )
 end
 (..)

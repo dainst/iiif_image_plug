@@ -30,7 +30,7 @@ The IIIF Image plug will automatically evaluate these pages and select the best 
 
 ## Output
 
-Some image formats can not be streamed, see the documentation for the `IIIFImagePlug.V3.Options` module.
+Some image formats can not be streamed directly and are written to a temporary file by default, see the documentation for the `IIIFImagePlug.V3.Options` module.
 
 ## Alternatives to this library
 
