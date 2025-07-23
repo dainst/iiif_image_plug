@@ -63,7 +63,9 @@ defmodule IIIFImagePlug.MixProject do
       licenses: ["Apache-2.0"],
       links: %{
         "GitHub" => "https://github.com/dainst/iiif_image_plug",
-        "International Image Interoperability Framework" => "https://iiif.io/"
+        "International Image Interoperability Framework" => "https://iiif.io/",
+        "Elixir Forum" =>
+          "https://elixirforum.com/t/iiif-image-plug-an-elixir-plug-implementing-the-iiif-image-api-specification/"
       }
     ]
   end
