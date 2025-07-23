@@ -1,13 +1,17 @@
 defmodule IIIFImagePlug.V3.Data do
-  alias Vix.Vips.Operation
-  alias Vix.Vips.Image
+  alias Vix.Vips.{
+    Image,
+    Operation
+  }
 
-  alias IIIFImagePlug.V3.Data.Size.Scaling
-  alias IIIFImagePlug.V3.Data.Region.ExtractArea
-  alias IIIFImagePlug.V3.Data.Quality
-  alias IIIFImagePlug.V3.Data.Rotation
-  alias IIIFImagePlug.V3.Data.Size
-  alias IIIFImagePlug.V3.Data.Region
+  alias IIIFImagePlug.V3.Data.{
+    Size,
+    Size.Scaling,
+    Region,
+    Region.ExtractArea,
+    Rotation,
+    Quality
+  }
 
   @moduledoc """
   Produces image data based on the given IIIF parameters and Plug settings.
@@ -31,7 +35,7 @@ defmodule IIIFImagePlug.V3.Data do
         settings,
         module
       ) do
-    {:ok, path} = module.identifier_to_path(identifier)
+    {:ok, path} = module.identifier_path(identifier)
 
     with {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},

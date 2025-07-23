@@ -4,6 +4,8 @@ defmodule IIIFImagePlug.V3 do
   alias Vix.Vips.Image
 
   alias IIIFImagePlug.V3.{
+    IdentifierInfo,
+    Information,
     Options,
     Data
   }
@@ -17,10 +19,15 @@ defmodule IIIFImagePlug.V3 do
   """
 
   @doc """
-  __Required__ callback function that resolves a given IIIF identifier to a file path (string).
+  __Required__ callback function that maps a given identifier to an `%IdentifierInfo{}` struct.
   """
-  @callback identifier_to_path(identifier :: String.t()) ::
-              {:ok, String.t()} | {:error, atom()}
+  @callback identifier_info(identifier :: String.t()) ::
+              {:ok, IdentifierInfo.t()} | {:error, any()}
+
+  @doc """
+  __Required__ callback function that maps a given identifier to a file path.
+  """
+  @callback(identifier_path(identifier :: String.t()) :: {:ok, String.t()} | :error, any())
 
   @doc """
   __Optional__ callback function to override the scheme (https or https) evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a
@@ -37,30 +44,6 @@ defmodule IIIFImagePlug.V3 do
   __Optional__ callback function to override the port evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
   """
   @callback port() :: pos_integer() | nil
-
-  @doc """
-  __Optional__ callback function that returns a [rights](https://iiif.io/api/image/3.0/#56-rights) statement for a given identifier. If
-  `nil` is returned, the _rights_ key will be omitted in the _info.json_.
-  """
-  @callback rights(identifier :: String.t()) :: String.t() | nil
-
-  @doc """
-  __Optional__ callback function that returns a list of [part of](https://iiif.io/api/image/3.0/#58-linking-properties) properties for
-  a given identifier. If an empty list is returned, the _partOf_ key will be omitted in the _info.json_.
-  """
-  @callback part_of(identifier :: String.t()) :: list()
-
-  @doc """
-  __Optional__ callback function that returns a list of [see also](https://iiif.io/api/image/3.0/#58-linking-properties) properties for
-  a given identifier. If an empty list is returned, the _seeAlso_ key will be omitted in the _info.json_.
-  """
-  @callback see_also(identifier :: String.t()) :: list()
-
-  @doc """
-  __Optional__ callback function that returns a list of [service](https://iiif.io/api/image/3.0/#58-linking-properties) properties for
-  a given identifier. If an empty list is returned, the _service_ key will be omitted in the _info.json_.
-  """
-  @callback service(identifier :: String.t()) :: list()
 
   @doc """
   __Optional__ callback function that lets you override the default plug error response, which is defined as follows:
@@ -99,11 +82,6 @@ defmodule IIIFImagePlug.V3 do
       def host(), do: IIIFImagePlug.V3.host()
       def port(), do: IIIFImagePlug.V3.port()
 
-      def rights(identifier), do: IIIFImagePlug.V3.rights(identifier)
-      def part_of(identifier), do: IIIFImagePlug.V3.part_of(identifier)
-      def see_also(identifier), do: IIIFImagePlug.V3.see_also(identifier)
-      def service(identifier), do: IIIFImagePlug.V3.service(identifier)
-
       # See https://dockyard.com/blog/2024/04/18/use-macro-with-defoverridable-function-fallbacks
       #
       # Basically if no `send_error/3` is defined by the user of the library, the plug will use the default
@@ -120,10 +98,6 @@ defmodule IIIFImagePlug.V3 do
       defoverridable scheme: 0,
                      host: 0,
                      port: 0,
-                     rights: 1,
-                     part_of: 1,
-                     see_also: 1,
-                     service: 1,
                      send_error: 3
     end
   end
@@ -149,7 +123,7 @@ defmodule IIIFImagePlug.V3 do
     |> resp(:found, "")
     |> put_resp_header(
       "location",
-      "#{construct_image_id(conn, identifier, module)}/info.json"
+      "#{Information.construct_image_id(conn, identifier, module)}/info.json"
     )
   end
 
@@ -158,7 +132,7 @@ defmodule IIIFImagePlug.V3 do
         options,
         module
       ) do
-    case generate_image_info(conn, identifier, options, module) do
+    case Information.generate_image_info(conn, identifier, options, module) do
       {:ok, info} ->
         conn
         |> put_resp_content_type("application/ld+json")
@@ -300,149 +274,7 @@ defmodule IIIFImagePlug.V3 do
     )
   end
 
-  def construct_image_id(
-        %Conn{} = conn,
-        identifier,
-        module
-      )
-      when is_binary(identifier) do
-    scheme = module.scheme() || conn.scheme
-    host = module.host() || conn.scheme
-    port = module.port() || conn.port
-
-    Enum.join([
-      scheme,
-      "://",
-      host,
-      if(port != nil, do: ":#{port}", else: ""),
-      if(conn.script_name != [], do: Path.join(["/"] ++ conn.script_name), else: ""),
-      "/",
-      identifier
-    ])
-  end
-
   def scheme(), do: nil
   def host(), do: nil
   def port(), do: nil
-
-  def generate_image_info(conn, identifier, options, module) do
-    with {:identifier, {:ok, path}} <- {:identifier, module.identifier_to_path(identifier)},
-         {:file_exists, true} <- {:file_exists, File.exists?(path)},
-         {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)} do
-      {
-        :ok,
-        %{
-          "@context": "http://iiif.io/api/image/3/context.json",
-          id: "#{construct_image_id(conn, identifier, module)}",
-          type: "ImageService3",
-          protocol: "http://iiif.io/api/image",
-          width: Image.width(file),
-          height: Image.height(file),
-          profile: "level2",
-          maxHeight: options.max_height,
-          maxWidth: options.max_width,
-          maxArea: options.max_area,
-          extra_features: [
-            "mirroring",
-            "regionByPct",
-            "regionByPx",
-            "regionSquare",
-            "rotationArbitrary",
-            "sizeByConfinedWh",
-            "sizeByH",
-            "sizeByPct",
-            "sizeByW",
-            "sizeByWh",
-            "sizeUpscaling"
-          ],
-          preferredFormat: options.preferred_formats,
-          extraFormats: options.extra_formats,
-          extraQualities: [:color, :gray, :bitonal]
-        }
-        |> maybe_add_rights(identifier, module)
-        |> maybe_add_part_of(identifier, module)
-        |> maybe_add_see_also(identifier, module)
-        |> maybe_add_service(identifier, module)
-        |> maybe_add_sizes(file, path)
-      }
-    else
-      {:identifier, _} ->
-        {:error, :unknown_identifier}
-
-      {:file_exists, false} ->
-        {:error, :no_file}
-
-      {:file_opened, _} ->
-        {:error, :no_image_file}
-    end
-  end
-
-  def rights(_identifier), do: nil
-  def part_of(_identifier), do: []
-  def see_also(_identifier), do: []
-  def service(_identifier), do: []
-
-  defp maybe_add_rights(%{} = info, identifier, module) do
-    case module.rights(identifier) do
-      nil -> info
-      value -> Map.put(info, :rights, value)
-    end
-  end
-
-  defp maybe_add_part_of(%{} = info, identifier, module) do
-    case module.part_of(identifier) do
-      [] -> info
-      values -> Map.put(info, :part_of, values)
-    end
-  end
-
-  defp maybe_add_see_also(%{} = info, identifier, module) do
-    case module.see_also(identifier) do
-      [] -> info
-      values -> Map.put(info, :see_also, values)
-    end
-  end
-
-  defp maybe_add_service(%{} = info, identifier, module) do
-    case module.service(identifier) do
-      [] -> info
-      values -> Map.put(info, :service, values)
-    end
-  end
-
-  defp maybe_add_sizes(info, base_image, path) do
-    page_count =
-      try do
-        Image.n_pages(base_image)
-      rescue
-        _ -> 1
-      end
-
-    if page_count > 1 do
-      last_page = page_count - 1
-
-      sizes =
-        0..last_page
-        |> Stream.map(fn page ->
-          {:ok, page_image} = Image.new_from_file(path, page: page)
-
-          width = Image.width(page_image)
-          height = Image.height(page_image)
-
-          %{
-            type: "Size",
-            width: width,
-            height: height
-          }
-        end)
-        |> Stream.reject(fn %{width: width} ->
-          width == Image.width(base_image)
-        end)
-        |> Enum.sort_by(fn %{width: width} -> width end)
-
-      Map.put(info, :sizes, sizes)
-    else
-      info
-    end
-  end
 end

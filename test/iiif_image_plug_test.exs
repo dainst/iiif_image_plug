@@ -91,14 +91,14 @@ defmodule IIIFImagePlug.V3Test do
       @expected_file_info
       |> Map.merge(%{
         "rights" => "https://creativecommons.org/publicdomain/zero/1.0/",
-        "part_of" => [
+        "partOf" => [
           %{
             "id" => "https://example.org/manifest/1",
             "label" => %{"en" => ["A Book"]},
             "type" => "Manifest"
           }
         ],
-        "see_also" => [
+        "seeAlso" => [
           %{
             "format" => "text/xml",
             "id" => "https://example.org/image1.xml",
