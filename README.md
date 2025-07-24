@@ -47,14 +47,14 @@ The minimal plug implementation may look something like this:
 defmodule MyApp.IIIFPlug do
   use IIIFImagePlug.V3
 
-  # There are two required and some optional callbacks you have to implement, see the 
-  # `IIIFImagePlug.V3`, `IIIFImagePlug.V3.InfoRequest` and `IIIFImagePlug.V3.DataRequest` modules 
+  # There are two required callbacks you have to implement, plus some optional callbacks you may implement. See the 
+  # `IIIFImagePlug.V3`, `IIIFImagePlug.V3.InfoRequest` and `IIIFImagePlug.V3.DataRequest` modules' 
   # documentation for more.
 
   @impl true
   def info_request(identifier) do
-    # The first required callback lets you inject some metadata from your domain into the plug when it is generating
-    # an information request (info.json) for a specific `identifier`, the only required field is `:path`, which tells 
+    # The first required callback lets you inject some metadata from your application into the plug when it is responding to
+    # an information request (info.json) for a specific `identifier`. The only required field is `:path`, which tells 
     # the plug the file system path matching the given identifier. Here we simply assume the identifier matches the file name
     # in a flat single directory.
     {
@@ -67,8 +67,8 @@ defmodule MyApp.IIIFPlug do
 
   @impl true
   def data_request(identifier) do
-    # The second required callback lets you inject some metadata from your domain into the plug when it is generating
-    # an the actual image data for a specific `identifier`, as with `info_request/1`, the only required field is `:path`, which tells 
+    # The second required callback lets you inject some metadata from your application into the plug when it is responding to
+    # an actual image data request for a specific `identifier`. As with `info_request/1`, the only required field is `:path`, which tells 
     # the plug the file system path matching the given identifier. 
     {
       :ok,

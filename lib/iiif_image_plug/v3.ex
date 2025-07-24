@@ -20,7 +20,7 @@ defmodule IIIFImagePlug.V3 do
   """
 
   @doc """
-  __Required__ callback function that maps a given _identifier_ to an `%Info{}` struct.
+  __Required__ callback function that maps a given _identifier_ to an `%InfoRequest{}` struct.
   """
   @callback info_request(identifier :: String.t()) ::
               {:ok, InfoRequest.t()} | {:error, any()}

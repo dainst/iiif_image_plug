@@ -11,7 +11,13 @@ defmodule IIIFImagePlug.V3.Info do
   @moduledoc false
 
   @doc """
-  Returns the data for an image information request (info.json) for the given identifier.
+  Creates the data for an image information request (`info.json`) for the given `identifier`.
+
+  ## Returns
+
+  - `{conn, metadata}` on success, where `conn` is an updated `Plug.Conn` struct (if the plug defines its own
+  response headers for the `identifier`) and `metadata` is a map in the `info.json` structure to be encoded and sent as a response content.
+  - `{:error, reason}` otherwise.
   """
   def generate_image_info(%Conn{} = conn, identifier, %Options{} = options, using_module)
       when is_binary(identifier) do
@@ -85,7 +91,7 @@ defmodule IIIFImagePlug.V3.Info do
   end
 
   @doc """
-  Returns a URI for the given identifier based on the plug and the module implementing the IIIFImagePlug.
+  Returns a URI (IIIF image ID) for the given identifier.
   """
   def construct_image_id(
         %Conn{} = conn,
