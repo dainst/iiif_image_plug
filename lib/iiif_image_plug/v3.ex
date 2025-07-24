@@ -285,30 +285,4 @@ defmodule IIIFImagePlug.V3 do
   def scheme(), do: nil
   def host(), do: nil
   def port(), do: nil
-
-  # defp maybe_put_cache_headers(conn, identifier, %Options{
-  #        cache_control: cache_control,
-  #        identifier_to_cache_control_callback: callback
-  #      }) do
-  #   cache_header_value =
-  #     cond do
-  #       # Callback takes precedence
-  #       is_function(callback, 1) ->
-  #         callback.(identifier)
-
-  #       # Static cache control
-  #       is_binary(cache_control) ->
-  #         cache_control
-
-  #       # No cache control configured
-  #       true ->
-  #         nil
-  #     end
-
-  #   if cache_header_value do
-  #     put_resp_header(conn, "cache-control", cache_header_value)
-  #   else
-  #     conn
-  #   end
-  # end
 end
