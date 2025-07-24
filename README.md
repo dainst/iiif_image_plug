@@ -30,48 +30,51 @@ Assuming you want to serve IIIF in your plug based server at "/iiif/v3", add a f
 
 ```elixir
   forward("/iiif/v3",
-    to: IIIFImagePlug.V3,
-    init_opts: %{
-      identifier_to_path_callback: &ImageStore.identifier_to_path/1
-    }
+    to: MyApp.IIIFPlug,
+    init_opts: %{init_opts: %IIIFImagePlug.V3.Options{}}
   )
 ```
 
 For [Phoenix](https://www.phoenixframework.org/) it would look slightly different:
 
 ```elixir
-  forward("/iiif/v3", IIIFImagePlug.V3, %{
-    identifier_to_path_callback: &ImageStore.identifier_to_path/1
-  })
+  forward("/iiif/v3", MyApp.IIIFPlug, %IIIFImagePlug.V3.Options{})
 ```
 
-The option `:identifier_to_path_callback` lets the plug map the IIIF [identifier](https://iiif.io/api/image/3.0/#21-image-request-uri-syntax) to an actual file path in your file system. 
-
-`ImageStore.identifier_to_path/1` in this case might look something like this:
+The minimal plug implementation may look something like this:
 
 ```elixir
 defmodule MyApp.IIIFPlug do
   use IIIFImagePlug.V3
 
+  # There are two required and some optional callbacks you have to implement, see the 
+  # `IIIFImagePlug.V3`, `IIIFImagePlug.V3.InfoRequest` and `IIIFImagePlug.V3.DataRequest` modules 
+  # documentation for more.
+
   @impl true
-  def identifier_info(identifier) do
-    # This callback implementation is used to generate the `info.json` for a given identifier.
+  def info_request(identifier) do
+    # The first required callback lets you inject some metadata from your domain into the plug when it is generating
+    # an information request (info.json) for a specific `identifier`, the only required field is `:path`, which tells 
+    # the plug the file system path matching the given identifier. Here we simply assume the identifier matches the file name
+    # in a flat single directory.
     {
       :ok,
-      %IIIFImagePlug.V3.IdentifierInfo{
-        path: "test/images/#{identifier}",
-        rights: "https://creativecommons.org/publicdomain/zero/1.0/" # optional, see docs.
+      %IIIFImagePlug.V3.InfoRequest{
+        path: "/mnt/my_app_images/#{identifier}"
       }
     }
   end
 
   @impl true
-  def identifier_to_path(identifier) do
-    # This callback implementation returns only the path to the identified image and is used when serving 
-    # actual image data.
+  def data_request(identifier) do
+    # The second required callback lets you inject some metadata from your domain into the plug when it is generating
+    # an the actual image data for a specific `identifier`, as with `info_request/1`, the only required field is `:path`, which tells 
+    # the plug the file system path matching the given identifier. 
     {
       :ok,
-      "test/images/#{identifier}"
+      %IIIFImagePlug.V3.DataRequest{
+        path: "/mnt/my_app_images/#{identifier}"
+      }
     }
   end
 ```
