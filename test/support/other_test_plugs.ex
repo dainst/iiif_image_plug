@@ -69,6 +69,31 @@ defmodule Custom404Plug do
   end
 end
 
+defmodule BehindProxyPlug do
+  @moduledoc false
+  use IIIFImagePlug.V3
+
+  alias IIIFImagePlug.V3.{
+    DataRequest,
+    InfoRequest
+  }
+
+  @impl true
+  def data_request(identifier), do: DefaultPlug.data_request(identifier)
+
+  @impl true
+  def info_request(identifier), do: DefaultPlug.info_request(identifier)
+
+  @impl true
+  def scheme(), do: "https"
+
+  @impl true
+  def host(), do: "subdomain.example.org"
+
+  @impl true
+  def port(), do: 1337
+end
+
 defmodule CustomResponseHeaderPlug do
   @moduledoc false
   use IIIFImagePlug.V3

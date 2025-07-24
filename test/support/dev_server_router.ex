@@ -44,6 +44,11 @@ defmodule DevServerRouter do
     init_opts: %Options{}
   )
 
+  forward("/proxy_setup",
+    to: BehindProxyPlug,
+    init_opts: %Options{}
+  )
+
   forward("/",
     to: DefaultPlug,
     init_opts:

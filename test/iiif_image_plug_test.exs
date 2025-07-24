@@ -510,6 +510,19 @@ defmodule IIIFImagePlug.V3Test do
       cache_control_headers = Plug.Conn.get_resp_header(conn, "cache-control")
       refute "public, max-age=31536000, immutable" in cache_control_headers
     end
+
+    test "scheme, host and port get overridden by callback" do
+      conn = conn(:get, "/proxy_setup/#{@sample_jpg_name}/info.json")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      expected_id = "https://subdomain.example.org:1337/proxy_setup/#{@sample_jpg_name}"
+
+      %{"id" => ^expected_id} = Jason.decode!(conn.resp_body)
+    end
   end
 
   defp get_expected_file_paths() do
