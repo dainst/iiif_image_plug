@@ -55,7 +55,7 @@ defmodule MyApp.IIIFPlug do
   def info_request(identifier) do
     # The first required callback lets you inject some metadata from your application into the plug when it is responding to
     # an information request (info.json) for a specific `identifier`. The only required field is `:path`, which tells 
-    # the plug the file system path matching the given identifier. Here we simply assume the identifier matches the file name
+    # the plug the file system path matching the given `identifier`. Here we simply assume the `identifier` matches the file name
     # in a flat single directory.
     {
       :ok,
@@ -69,7 +69,7 @@ defmodule MyApp.IIIFPlug do
   def data_request(identifier) do
     # The second required callback lets you inject some metadata from your application into the plug when it is responding to
     # an actual image data request for a specific `identifier`. As with `info_request/1`, the only required field is `:path`, which tells 
-    # the plug the file system path matching the given identifier. 
+    # the plug the file system path matching the given `identifier`. 
     {
       :ok,
       %IIIFImagePlug.V3.DataRequest{
