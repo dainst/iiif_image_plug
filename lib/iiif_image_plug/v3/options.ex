@@ -1,6 +1,6 @@
 defmodule IIIFImagePlug.V3.Options do
   @moduledoc """
-  Defines the IIIFImagePlug.V3 plug options.
+  A struct for setting `IIIFImagePlug.V3` plug options.
 
   The plug relies on [Vix](https://hex.pm/packages/vix) package for the image processing, which includes a
   precompiled libvips binary out of the box (Linux/MacOS). The possible values for `:preferred_formats` and
@@ -22,18 +22,18 @@ defmodule IIIFImagePlug.V3.Options do
   The maximum amount of image pixels the plug will serve (does not necessarily have to be `max_width * max_height`).
 
   ### `:preferred_formats` (default: `[:jpg]`)
-  The [preferred formats](https://iiif.io/api/image/3.0/#55-preferred-formats) to be used for your service.
+  The [preferred formats](https://iiif.io/api/image/3.0/#55-preferred-formats) to be used for your plug.
 
   ### `:extra_formats` (default: `[:webp, :png]`)
-  The [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your service can deliver.
+  The [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your plug can deliver.
 
   ### `:temp_dir` (default: `uses System.tmp_dir!/0`)
 
   To be more precise, the default evaluates [System.tmp_dir!/0](https://hexdocs.pm/elixir/System.html#tmp_dir!/0) and creates
   a directory "iiif_image_plug" there.
 
-  Because of how the TIF, raw and vips file formats are structured, the plug can not stream the those if they were _requested_ as the response
-  [format](https://iiif.io/api/image/3.0/#45-format). Instead, the image gets written to a temporary file, which is then streamed
+  Because of how the TIF, raw and vips file formats are structured, the plug can not stream those when they are _requested_ as the response
+  [format](https://iiif.io/api/image/3.0/#45-format). Instead, the result image gets written to a temporary file, which is then streamed
   from disk and getting deleted afterwards.
 
   If you want to forgo this file creation, you can set this option to `:buffer` instead of a file path. This will configure

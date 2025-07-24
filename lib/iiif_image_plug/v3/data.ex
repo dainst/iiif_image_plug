@@ -86,7 +86,6 @@ defmodule IIIFImagePlug.V3.Data do
             image,
             format
           }
-          |> IO.inspect()
 
         error ->
           error

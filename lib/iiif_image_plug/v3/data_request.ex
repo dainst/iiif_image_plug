@@ -1,6 +1,6 @@
 defmodule IIIFImagePlug.V3.DataRequest do
   @moduledoc """
-  Used to inject values from the your application into the plug when responding to image data requests.
+  Used to inject values from your application into the plug when responding to image data requests.
 
   See also `c:IIIFImagePlug.V3.data_request/1`.
 

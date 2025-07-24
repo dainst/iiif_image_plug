@@ -20,29 +20,29 @@ defmodule IIIFImagePlug.V3 do
   """
 
   @doc """
-  __Required__ callback function that maps a given _identifier_ to an `%InfoRequest{}` struct.
+  __Required__ callback function that maps a given _identifier_ to an `IIIFImagePlug.V3.InfoRequest` struct.
   """
   @callback info_request(identifier :: String.t()) ::
               {:ok, InfoRequest.t()} | {:error, any()}
 
   @doc """
-  __Required__ callback function that maps a given _identifier_ to a local file path.
+  __Required__ callback function that maps a given _identifier_ to an `IIIFImagePlug.V3.DataRequest` struct.
   """
-  @callback(data_request(identifier :: String.t()) :: {:ok, DataRequest.t()} | :error, any())
+  @callback data_request(identifier :: String.t()) :: {:ok, DataRequest.t()} | {:error, any()}
 
   @doc """
-  __Optional__ callback function to override the scheme (https or https) evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a
+  __Optional__ callback function to override the `:scheme` ("http" or "https") evaluated from the `Plug.Conn`, useful if your Elixir app runs behind a
   proxy.
   """
   @callback scheme() :: String.t() | nil
 
   @doc """
-  __Optional__ callback function to override the host evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+  __Optional__ callback function to override the `:host` evaluated from the `Plug.Conn`, useful if your Elixir app runs behind a proxy.
   """
   @callback host() :: String.t() | nil
 
   @doc """
-  __Optional__ callback function to override the port evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+  __Optional__ callback function to override the `:port` evaluated from the `Plug.Conn`, useful if your Elixir app runs behind a proxy.
   """
   @callback port() :: pos_integer() | nil
 
@@ -58,7 +58,7 @@ defmodule IIIFImagePlug.V3 do
         )
       end
 
-  One use case might be sending your own placeholder image instead of the JSON for failed image requests.
+  One use case might be sending your own placeholder image instead of the JSON for failed data requests.
   """
   @callback send_error(
               conn :: Conn.t(),
@@ -139,6 +139,13 @@ defmodule IIIFImagePlug.V3 do
         |> put_resp_content_type("application/ld+json")
         |> send_resp(200, Jason.encode!(info))
 
+      {:error, :unknown_identifier} ->
+        module.send_error(
+          conn,
+          404,
+          :unknown
+        )
+
       {:error, :no_file} ->
         module.send_error(
           conn,
@@ -199,6 +206,13 @@ defmodule IIIFImagePlug.V3 do
           true ->
             send_stream(conn, image, format)
         end
+
+      {:error, :unknown_identifier} ->
+        module.send_error(
+          conn,
+          404,
+          :unknown
+        )
 
       {:error, :no_file} ->
         module.send_error(
