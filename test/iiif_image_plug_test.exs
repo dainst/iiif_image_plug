@@ -31,7 +31,8 @@ defmodule IIIFImagePlug.V3Test do
       "sizeUpscaling"
     ],
     "height" => 300,
-    "id" => "http://localhost:4000/bentheim_mill.jpg",
+    # in the Elixir test environment, the default %Conn{} value for `:host` is "www.example.com" and for `:port` its 80.
+    "id" => "http://www.example.com:80/bentheim_mill.jpg",
     "maxArea" => 240_000,
     "maxHeight" => 400,
     "maxWidth" => 600,
@@ -66,7 +67,7 @@ defmodule IIIFImagePlug.V3Test do
     response = Jason.decode!(conn.resp_body)
 
     assert %{
-             "id" => "http://localhost:4000/some/nested/route/bentheim_mill.jpg"
+             "id" => "http://www.example.com:80/some/nested/route/bentheim_mill.jpg"
            } = response
   end
 
@@ -81,7 +82,7 @@ defmodule IIIFImagePlug.V3Test do
     response = Jason.decode!(conn.resp_body)
 
     assert %{
-             "id" => "http://localhost:4000/bentheim_mill_pyramid.tif",
+             "id" => "http://www.example.com:80/bentheim_mill_pyramid.tif",
              "sizes" => [%{"height" => 150, "type" => "Size", "width" => 250}]
            } = response
   end
@@ -126,7 +127,8 @@ defmodule IIIFImagePlug.V3Test do
 
     response_default = Jason.decode!(conn.resp_body)
 
-    extended = Map.replace(extended, "id", "http://localhost:4000/extra_info/bentheim_mill.jpg")
+    extended =
+      Map.replace(extended, "id", "http://www.example.com:80/extra_info/bentheim_mill.jpg")
 
     conn = conn(:get, "/extra_info/#{@sample_jpg_name}/info.json")
     conn = DevServerRouter.call(conn, @opts)
@@ -144,7 +146,7 @@ defmodule IIIFImagePlug.V3Test do
     assert conn.state == :set
     assert conn.status == 302
 
-    assert ["http://localhost:4000/bentheim_mill_pyramid.tif/info.json"] =
+    assert ["http://www.example.com:80/bentheim_mill_pyramid.tif/info.json"] =
              Plug.Conn.get_resp_header(conn, "location")
   end
 
@@ -497,7 +499,7 @@ defmodule IIIFImagePlug.V3Test do
     end
 
     test "does not set response headers for errors" do
-      conn = conn(:get, "/nonexistent.jpg/full/max/0/default.jpg")
+      conn = conn(:get, "/custom_response_header/nonexistent.jpg/full/max/0/default.jpg")
 
       conn = DevServerRouter.call(conn, @opts)
 

@@ -1,38 +1,25 @@
-defmodule IIIFImagePlug.V3.Information do
+defmodule IIIFImagePlug.V3.Info do
   import Plug.Conn
   alias Plug.Conn
   alias Vix.Vips.Image
 
-  @moduledoc """
-  This struct is used for generating an image's `info.json` that is being served by the `IIIFImagePlug.V3` plug.
+  alias IIIFImagePlug.V3.{
+    InfoRequest,
+    Options
+  }
 
-  ## Fields
+  @moduledoc false
 
-  - `:path` (required) your local file system path to the image file.
-  - `:rights` (optional) the [rights](https://iiif.io/api/image/3.0/#56-rights) statement for the given image.
-  - `:part_of` (optional) the _partOf_ [linking property](https://iiif.io/api/image/3.0/#58-linking-properties) for the image.
-  - `:see_also` (optional) the _seeAlso_ [linking property](https://iiif.io/api/image/3.0/#58-linking-properties) for the image.
-  - `:service` (optional) the _service_ [linking property](https://iiif.io/api/image/3.0/#58-linking-properties) for the image.
+  @doc """
+  Returns the data for an image information request (info.json) for the given identifier.
   """
-
-  @enforce_keys :path
-  defstruct [:path, :rights, part_of: [], see_also: [], service: [], response_headers: []]
-
-  @type t :: %__MODULE__{
-          path: String.t(),
-          rights: String.t() | nil,
-          part_of: list(),
-          see_also: list(),
-          service: list()
-        }
-
-  @doc false
-  def generate_image_info(conn, identifier, options, module) do
+  def generate_image_info(%Conn{} = conn, identifier, %Options{} = options, using_module)
+      when is_binary(identifier) do
     with {
            :identifier,
            {
              :ok,
-             %__MODULE__{
+             %InfoRequest{
                path: path,
                rights: rights,
                part_of: part_of,
@@ -41,11 +28,7 @@ defmodule IIIFImagePlug.V3.Information do
                response_headers: headers
              }
            }
-         } <-
-           {
-             :identifier,
-             module.identifier_info(identifier)
-           },
+         } <- {:identifier, using_module.info_request(identifier)},
          {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)} do
       {
@@ -56,7 +39,7 @@ defmodule IIIFImagePlug.V3.Information do
           end),
           %{
             "@context": "http://iiif.io/api/image/3/context.json",
-            id: "#{construct_image_id(conn, identifier, module)}",
+            id: "#{construct_image_id(conn, identifier, using_module)}",
             type: "ImageService3",
             protocol: "http://iiif.io/api/image",
             width: Image.width(file),
@@ -101,16 +84,18 @@ defmodule IIIFImagePlug.V3.Information do
     end
   end
 
-  @doc false
+  @doc """
+  Returns a URI for the given identifier based on the plug and the module implementing the IIIFImagePlug.
+  """
   def construct_image_id(
         %Conn{} = conn,
         identifier,
-        module
+        using_module
       )
       when is_binary(identifier) do
-    scheme = module.scheme() || conn.scheme
-    host = module.host() || conn.scheme
-    port = module.port() || conn.port
+    scheme = using_module.scheme() || conn.scheme
+    host = using_module.host() || conn.host
+    port = using_module.port() || conn.port
 
     Enum.join([
       scheme,

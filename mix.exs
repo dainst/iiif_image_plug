@@ -11,6 +11,7 @@ defmodule IIIFImagePlug.MixProject do
       test_coverage: [
         ignore_modules: [
           Custom404Plug,
+          CustomResponseHeaderPlug,
           DefaultPlug,
           DevServer,
           DevServerRouter,

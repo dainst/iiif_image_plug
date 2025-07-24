@@ -4,9 +4,11 @@ defmodule IIIFImagePlug.V3 do
   alias Vix.Vips.Image
 
   alias IIIFImagePlug.V3.{
-    Information,
-    Options,
-    Data
+    Data,
+    DataRequest,
+    Info,
+    InfoRequest,
+    Options
   }
 
   import Plug.Conn
@@ -18,15 +20,15 @@ defmodule IIIFImagePlug.V3 do
   """
 
   @doc """
-  __Required__ callback function that maps a given _identifier_ to an `%Information{}` struct.
+  __Required__ callback function that maps a given _identifier_ to an `%Info{}` struct.
   """
-  @callback identifier_info(identifier :: String.t()) ::
-              {:ok, Information.t()} | {:error, any()}
+  @callback info_request(identifier :: String.t()) ::
+              {:ok, InfoRequest.t()} | {:error, any()}
 
   @doc """
   __Required__ callback function that maps a given _identifier_ to a local file path.
   """
-  @callback(identifier_path(identifier :: String.t()) :: {:ok, String.t()} | :error, any())
+  @callback(data_request(identifier :: String.t()) :: {:ok, DataRequest.t()} | :error, any())
 
   @doc """
   __Optional__ callback function to override the scheme (https or https) evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a
@@ -122,16 +124,16 @@ defmodule IIIFImagePlug.V3 do
     |> resp(:found, "")
     |> put_resp_header(
       "location",
-      "#{Information.construct_image_id(conn, identifier, module)}/info.json"
+      "#{Info.construct_image_id(conn, identifier, module)}/info.json"
     )
   end
 
   def call(
         %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
-        options,
+        %Options{} = options,
         module
       ) do
-    case Information.generate_image_info(conn, identifier, options, module) do
+    case Info.generate_image_info(conn, identifier, options, module) do
       {:ok, {conn, info}} ->
         conn
         |> put_resp_content_type("application/ld+json")
@@ -177,7 +179,11 @@ defmodule IIIFImagePlug.V3 do
            options,
            module
          ) do
-      {%Plug.Conn{} = conn, %Image{} = image, format} ->
+      {
+        %Plug.Conn{} = conn,
+        %Image{} = image,
+        format
+      } ->
         cond do
           format not in @streamable and temp_dir == :buffer ->
             send_buffered(conn, image, format)

@@ -6,6 +6,8 @@ defmodule IIIFImagePlug.V3.Data do
     Operation
   }
 
+  alias IIIFImagePlug.V3.DataRequest
+
   alias IIIFImagePlug.V3.Data.{
     Size,
     Size.Scaling,
@@ -15,9 +17,11 @@ defmodule IIIFImagePlug.V3.Data do
     Quality
   }
 
-  @enforce_keys :path
-  defstruct [:path, response_headers: []]
+  @moduledoc false
 
+  @doc """
+  Returns the data for an image data request for the given identifier.
+  """
   def get(
         conn,
         identifier,
@@ -26,10 +30,10 @@ defmodule IIIFImagePlug.V3.Data do
         rotation_param,
         quality_and_format_param,
         settings,
-        module
+        using_module
       ) do
-    {:ok, %__MODULE__{path: path, response_headers: headers}} =
-      module.identifier_path(identifier)
+    {:ok, %DataRequest{path: path, response_headers: headers}} =
+      using_module.data_request(identifier)
 
     with {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},

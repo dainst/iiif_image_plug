@@ -1,47 +1,14 @@
-defmodule DefaultPlug do
-  @moduledoc false
-  use IIIFImagePlug.V3
-
-  alias IIIFImagePlug.V3.{
-    Data,
-    Information
-  }
-
-  @impl true
-  def identifier_info(identifier) do
-    {
-      :ok,
-      %Information{
-        path: "test/images/#{identifier}"
-      }
-    }
-  end
-
-  @impl true
-  def identifier_path(identifier), do: {:ok, %Data{path: "test/images/#{identifier}"}}
-
-  @impl true
-  def host() do
-    "localhost"
-  end
-
-  @impl true
-  def port() do
-    4000
-  end
-end
-
 defmodule ExtraInfoPlug do
   @moduledoc false
   use IIIFImagePlug.V3
-  alias IIIFImagePlug.V3.Information
-  alias IIIFImagePlug.V3.Data
+  alias IIIFImagePlug.V3.InfoRequest
+  alias IIIFImagePlug.V3.DataRequest
 
   @impl true
-  def identifier_info(identifier) do
+  def info_request(identifier) do
     {
       :ok,
-      %Information{
+      %InfoRequest{
         path: "test/images/#{identifier}",
         rights: "https://creativecommons.org/publicdomain/zero/1.0/",
         see_also: [
@@ -73,17 +40,7 @@ defmodule ExtraInfoPlug do
   end
 
   @impl true
-  def identifier_path(identifier), do: {:ok, %Data{path: "test/images/#{identifier}"}}
-
-  @impl true
-  def host() do
-    "localhost"
-  end
-
-  @impl true
-  def port() do
-    4000
-  end
+  def data_request(identifier), do: DefaultPlug.data_request(identifier)
 end
 
 defmodule Custom404Plug do
@@ -91,32 +48,15 @@ defmodule Custom404Plug do
   use IIIFImagePlug.V3
 
   alias IIIFImagePlug.V3.{
-    Data,
-    Information
+    DataRequest,
+    InfoRequest
   }
 
   @impl true
-  def identifier_info(identifier) do
-    {
-      :ok,
-      %Information{
-        path: "test/images/#{identifier}"
-      }
-    }
-  end
+  def data_request(identifier), do: DefaultPlug.data_request(identifier)
 
   @impl true
-  def identifier_path(identifier), do: {:ok, %Data{path: "test/images/#{identifier}"}}
-
-  @impl true
-  def host() do
-    "localhost"
-  end
-
-  @impl true
-  def port() do
-    4000
-  end
+  def info_request(identifier), do: DefaultPlug.info_request(identifier)
 
   @impl true
   def send_error(%Plug.Conn{} = conn, 404, _error_code) do
@@ -130,20 +70,21 @@ defmodule Custom404Plug do
 end
 
 defmodule CustomResponseHeaderPlug do
+  @moduledoc false
   use IIIFImagePlug.V3
 
   alias IIIFImagePlug.V3.{
-    Data,
-    Information
+    DataRequest,
+    InfoRequest
   }
 
   @impl true
-  def identifier_info(identifier) do
+  def info_request(identifier) do
     {path, headers} = simulate_additional_identifiers(identifier)
 
     {
       :ok,
-      %Information{
+      %InfoRequest{
         path: path,
         response_headers: headers
       }
@@ -151,24 +92,18 @@ defmodule CustomResponseHeaderPlug do
   end
 
   @impl true
-  def identifier_path(identifier) do
+  def data_request(identifier) do
     {path, headers} =
       simulate_additional_identifiers(identifier)
 
     {
       :ok,
-      %Data{
+      %DataRequest{
         path: path,
         response_headers: headers
       }
     }
   end
-
-  @impl true
-  def host(), do: "localhost"
-
-  @impl true
-  def port(), do: 4001
 
   defp simulate_additional_identifiers(identifier) do
     case identifier do
