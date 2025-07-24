@@ -46,11 +46,16 @@ defmodule DevServerRouter do
 
   forward("/",
     to: DefaultPlug,
-    init_opts: %Options{
-      max_width: 600,
-      max_height: 400,
-      max_area: 600 * 400,
-      extra_formats: [:webp, :png, :tif]
-    }
+    init_opts:
+      if Mix.env() == :test do
+        %Options{
+          max_width: 600,
+          max_height: 400,
+          max_area: 600 * 400,
+          extra_formats: [:webp, :png, :tif]
+        }
+      else
+        %Options{}
+      end
   )
 end
