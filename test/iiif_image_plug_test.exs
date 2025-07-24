@@ -31,7 +31,7 @@ defmodule IIIFImagePlug.V3Test do
       "sizeUpscaling"
     ],
     "height" => 300,
-    # in the Elixir test environment, the default %Conn{} value for `:host` is "www.example.com" and for `:port` its 80.
+    # in the Elixir test environment, the default %Conn{} value for `:host` is "www.example.com" and for `:port` is 80.
     "id" => "http://www.example.com:80/bentheim_mill.jpg",
     "maxArea" => 240_000,
     "maxHeight" => 400,
