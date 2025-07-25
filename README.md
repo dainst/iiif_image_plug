@@ -45,15 +45,14 @@ For [Phoenix](https://www.phoenixframework.org/) it would look slightly differen
 
 ### Example plug
 
-The minimal plug implementation may look something like this:
+A plug implementation may look something like this:
 
 ```elixir
 defmodule MyApp.IIIFPlug do
   use IIIFImagePlug.V3
 
-  # There are two required callbacks you have to implement, plus some optional callbacks you may implement. See the 
-  # `IIIFImagePlug.V3`, `IIIFImagePlug.V3.InfoRequest` and `IIIFImagePlug.V3.DataRequest` modules' 
-  # documentation for more.
+  # There are two required callbacks you have to implement, plus several optional ones. See the 
+  # `IIIFImagePlug.V3` documentation for more.
 
   @impl true
   def info_request(identifier) do
@@ -113,7 +112,7 @@ defmodule MyApp.IIIFPlug do
 
 For your service to fully implement the API specification, you need to properly configure Cross-Origin Resource Sharing (CORS). You could
 either set the correct headers in your `info_request/1` or `data_request/1` implementation or configure the appropriate headers in a plug
-before this one.
+before this one ([cors_plug ](https://hex.pm/packages/cors_plug) was used in this example):
 
 ```elixir
 (..)
@@ -143,7 +142,7 @@ This repository comes with a minimalistic server, run the server with:
 iex -S mix run
 ```
 
-The metadata of the main sample file can now be accessed at http://127.0.0.1:4000/bentheim.jpg/info.json:
+The metadata of the main sample file can now be accessed at http://localhost:4000/bentheim.jpg/info.json:
 
 ```json
 {
@@ -187,4 +186,4 @@ The metadata of the main sample file can now be accessed at http://127.0.0.1:400
 }
 ```
 
-The image data of the sample file can be viewed at http://127.0.0.1:4000/bentheim.jpg/full/max/0/default.jpg and you are able to play around with the IIIF API parameters.
+The image data of the sample file can be viewed at http://localhost:4000/bentheim.jpg/full/max/0/default.jpg and you are able to play around with the IIIF API parameters.
