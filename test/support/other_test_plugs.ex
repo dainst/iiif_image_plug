@@ -140,3 +140,31 @@ defmodule CustomResponseHeaderPlug do
     end
   end
 end
+
+defmodule CustomRequestErrorPlug do
+  @moduledoc false
+  use IIIFImagePlug.V3
+
+  alias IIIFImagePlug.V3.RequestError
+
+  @impl true
+  def info_request("restricted.jpg"), do: unauthorized()
+
+  def info_request(identifier), do: DefaultPlug.info_request(identifier)
+
+  @impl true
+  def data_request("restricted.jpg"), do: unauthorized()
+
+  def data_request(identifier), do: DefaultPlug.data_request(identifier)
+
+  defp unauthorized() do
+    {
+      :error,
+      %RequestError{
+        status_code: 401,
+        msg: :unauthorized,
+        response_headers: [{"something-key", "something value"}]
+      }
+    }
+  end
+end

@@ -523,6 +523,42 @@ defmodule IIIFImagePlug.V3Test do
 
       %{"id" => ^expected_id} = Jason.decode!(conn.resp_body)
     end
+
+    test "request errors defined in callbacks are returned correctly" do
+      # Information request for restricted identifier should get blocked.
+      conn = conn(:get, "/restricted_access/restricted.jpg/info.json")
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 401
+
+      assert %{"error" => "unauthorized"} = Jason.decode!(conn.resp_body)
+      assert ["something value"] = Plug.Conn.get_resp_header(conn, "something-key")
+
+      # Information request for sample image should still work.
+      conn = conn(:get, "/restricted_access/#{@sample_jpg_name}/info.json")
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      # Data request for restricted identifier should get blocked.
+      conn = conn(:get, "/restricted_access/restricted.jpg/full/max/0/default.jpg")
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 401
+
+      assert %{"error" => "unauthorized"} = Jason.decode!(conn.resp_body)
+      assert ["something value"] = Plug.Conn.get_resp_header(conn, "something-key")
+
+      # Data request for sample image should still work.
+      conn = conn(:get, "/restricted_access/#{@sample_jpg_name}/full/max/0/default.jpg")
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+    end
   end
 
   defp get_expected_file_paths() do

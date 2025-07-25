@@ -8,7 +8,8 @@ defmodule IIIFImagePlug.V3 do
     DataRequest,
     Info,
     InfoRequest,
-    Options
+    Options,
+    RequestError
   }
 
   import Plug.Conn
@@ -20,15 +21,29 @@ defmodule IIIFImagePlug.V3 do
   """
 
   @doc """
-  __Required__ callback function that maps a given _identifier_ to an `IIIFImagePlug.V3.InfoRequest` struct.
+  __Required__ callback function invoked on information requests (`info.json`), that maps the given _identifier_ to an
+  image file.
+
+  ## Returns
+
+  - `{:ok, info_request}` on success, where `info_request` is a `IIIFImagePlug.V3.InfoRequest` struct.
+  - `{:error, request_error}` otherwise, where `request_error` is a `IIIFImagePlug.V3.RequestError` struct.
+
   """
   @callback info_request(identifier :: String.t()) ::
-              {:ok, InfoRequest.t()} | {:error, any()}
+              {:ok, InfoRequest.t()} | {:error, RequestError.t()}
 
   @doc """
-  __Required__ callback function that maps a given _identifier_ to an `IIIFImagePlug.V3.DataRequest` struct.
+  __Required__ callback function invoked on image data requests, that maps the given _identifier_ to an
+  image file.
+
+  ## Returns
+
+  - `{:ok, info_request}` on success, where `info_request` is a `IIIFImagePlug.V3.InfoRequest` struct.
+  - `{:error, request_error}` otherwise, where `request_error` is a `IIIFImagePlug.V3.RequestError` struct.
   """
-  @callback data_request(identifier :: String.t()) :: {:ok, DataRequest.t()} | {:error, any()}
+  @callback data_request(identifier :: String.t()) ::
+              {:ok, DataRequest.t()} | {:error, RequestError.t()}
 
   @doc """
   __Optional__ callback function to override the `:scheme` ("http" or "https") evaluated from the `Plug.Conn`, useful if your Elixir app runs behind a
@@ -139,11 +154,14 @@ defmodule IIIFImagePlug.V3 do
         |> put_resp_content_type("application/ld+json")
         |> send_resp(200, Jason.encode!(info))
 
-      {:error, :unknown_identifier} ->
-        module.send_error(
-          conn,
-          404,
-          :unknown
+      {:error, %RequestError{status_code: code, msg: msg, response_headers: headers}} ->
+        headers
+        |> Enum.reduce(conn, fn {key, value}, acc ->
+          Plug.Conn.put_resp_header(acc, key, value)
+        end)
+        |> module.send_error(
+          code,
+          msg
         )
 
       {:error, :no_file} ->
@@ -207,11 +225,14 @@ defmodule IIIFImagePlug.V3 do
             send_stream(conn, image, format)
         end
 
-      {:error, :unknown_identifier} ->
-        module.send_error(
-          conn,
-          404,
-          :unknown
+      {:error, %RequestError{status_code: code, msg: msg, response_headers: headers}} ->
+        headers
+        |> Enum.reduce(conn, fn {key, value}, acc ->
+          Plug.Conn.put_resp_header(acc, key, value)
+        end)
+        |> module.send_error(
+          code,
+          msg
         )
 
       {:error, :no_file} ->

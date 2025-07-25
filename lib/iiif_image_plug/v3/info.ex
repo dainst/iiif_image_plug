@@ -1,5 +1,6 @@
 defmodule IIIFImagePlug.V3.Info do
   import Plug.Conn
+  alias IIIFImagePlug.V3.RequestError
   alias Plug.Conn
   alias Vix.Vips.Image
 
@@ -22,19 +23,17 @@ defmodule IIIFImagePlug.V3.Info do
   def generate_image_info(%Conn{} = conn, identifier, %Options{} = options, using_module)
       when is_binary(identifier) do
     with {
-           :identifier,
-           {
-             :ok,
-             %InfoRequest{
-               path: path,
-               rights: rights,
-               part_of: part_of,
-               see_also: see_also,
-               service: service,
-               response_headers: headers
-             }
+           :ok,
+           %InfoRequest{
+             path: path,
+             rights: rights,
+             part_of: part_of,
+             see_also: see_also,
+             service: service,
+             response_headers: headers
            }
-         } <- {:identifier, using_module.info_request(identifier)},
+         } <-
+           using_module.info_request(identifier),
          {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)} do
       {
@@ -79,8 +78,8 @@ defmodule IIIFImagePlug.V3.Info do
         }
       }
     else
-      {:identifier, _} ->
-        {:error, :unknown_identifier}
+      {:error, %RequestError{}} = error ->
+        error
 
       {:file_exists, false} ->
         {:error, :no_file}

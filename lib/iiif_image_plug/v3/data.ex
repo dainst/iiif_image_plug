@@ -1,6 +1,8 @@
 defmodule IIIFImagePlug.V3.Data do
   import Plug.Conn
 
+  alias IIIFImagePlug.V3.RequestError
+
   alias Vix.Vips.{
     Image,
     Operation
@@ -43,8 +45,8 @@ defmodule IIIFImagePlug.V3.Data do
       )
       when is_binary(identifier) and is_binary(region_param) and is_binary(size_param) and
              is_binary(rotation_param) and is_binary(quality_and_format_param) do
-    with {:identifier, {:ok, %DataRequest{path: path, response_headers: headers}}} <-
-           {:identifier, using_module.data_request(identifier)},
+    with {:ok, %DataRequest{path: path, response_headers: headers}} <-
+           using_module.data_request(identifier),
          {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},
          # Apply autorot to get apply exif rotations before any further operations.
@@ -91,8 +93,8 @@ defmodule IIIFImagePlug.V3.Data do
           error
       end
     else
-      {:identifier, _} ->
-        {:error, :unknown_identifier}
+      {:error, %RequestError{}} = error ->
+        error
 
       {:file_exists, false} ->
         {:error, :no_file}

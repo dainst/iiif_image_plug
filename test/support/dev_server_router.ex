@@ -49,6 +49,11 @@ defmodule DevServerRouter do
     init_opts: %Options{}
   )
 
+  forward("/restricted_access",
+    to: CustomRequestErrorPlug,
+    init_opts: %Options{}
+  )
+
   forward("/",
     to: DefaultPlug,
     init_opts:

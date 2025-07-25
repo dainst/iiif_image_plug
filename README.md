@@ -26,6 +26,8 @@ def deps do
 end
 ```
 
+## Usage
+
 Assuming you want to serve IIIF in your plug based server at "/iiif/v3", add a forward route like this: 
 
 ```elixir
@@ -81,8 +83,9 @@ defmodule MyApp.IIIFPlug do
 
 ### CORS 
 
-For your service to fully implement the API specification, you need to properly configure Cross-Origin Resource Sharing (CORS). This has to be done outside the context of this plug, one option could be to use the
-[CorsPlug](https://hexdocs.pm/cors_plug/readme.html) library:
+For your service to fully implement the API specification, you need to properly configure Cross-Origin Resource Sharing (CORS). You could
+either set the correct headers in your `info_request/1` or `data_request/1` implementation or configure the appropriate headers in a plug
+before this one.
 
 ```elixir
 (..)
