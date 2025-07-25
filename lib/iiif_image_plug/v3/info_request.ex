@@ -13,7 +13,7 @@ defmodule IIIFImagePlug.V3.InfoRequest do
   - `:service` (optional) the _service_ [linking property](https://iiif.io/api/image/3.0/#58-linking-properties) for the image.
   - `:response_headers` (optional), a list of key-value tuples that should be set as response headers for the request.
 
-  ## Example:
+  ## Example
 
       %InfoRequest{
         path: "test/images/my_image.jpg",

@@ -9,7 +9,7 @@ defmodule IIIFImagePlug.V3.DataRequest do
   - `:path` (required) your local file system path to the image file.
   - `:response_headers` (optional), a list of key-value tuples that should be set as response headers for the request.
 
-  ## Example:
+  ## Example
 
       %DataRequest{
         path: "test/images/my_image.jpg",

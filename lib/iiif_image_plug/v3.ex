@@ -62,7 +62,9 @@ defmodule IIIFImagePlug.V3 do
   @callback port() :: pos_integer() | nil
 
   @doc """
-  __Optional__ callback function that lets you override the default plug error response, which is defined as follows:
+  __Optional__ callback function that lets you override the default plug error response.
+
+  The default is defined as follows:
 
       def send_error(conn, status_code, error_type) do
         conn
@@ -118,6 +120,7 @@ defmodule IIIFImagePlug.V3 do
     end
   end
 
+  @doc false
   defmacro add_send_error_fallback(_env) do
     quote do
       def send_error(%Conn{} = conn, status_code, error_type) do
@@ -126,6 +129,7 @@ defmodule IIIFImagePlug.V3 do
     end
   end
 
+  @doc false
   def init(%Options{temp_dir: temp_dir} = opts) do
     if temp_dir != :buffer do
       File.mkdir_p!(temp_dir)
@@ -134,6 +138,7 @@ defmodule IIIFImagePlug.V3 do
     opts
   end
 
+  @doc false
   def call(%Plug.Conn{path_info: [identifier]} = conn, _options, module) do
     conn
     |> resp(:found, "")
@@ -308,6 +313,7 @@ defmodule IIIFImagePlug.V3 do
     end)
   end
 
+  @doc false
   def send_error(conn, status_code, error_type) do
     conn
     |> put_resp_content_type("application/json")
@@ -317,7 +323,12 @@ defmodule IIIFImagePlug.V3 do
     )
   end
 
+  @doc false
   def scheme(), do: nil
+
+  @doc false
   def host(), do: nil
+
+  @doc false
   def port(), do: nil
 end

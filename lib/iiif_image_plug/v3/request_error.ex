@@ -12,7 +12,7 @@ defmodule IIIFImagePlug.V3.RequestError do
   to be picked up by a custom `c:IIIFImagePlug.V3.send_error/3` implementation later on.
   - `:response_headers` (optional) a list of key-value tuples that should be set as response headers for the error response.
 
-  ## Example:
+  ## Example
 
       %RequestError{
         code: 401,
