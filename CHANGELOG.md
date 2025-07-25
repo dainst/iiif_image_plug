@@ -1,8 +1,12 @@
 # Changelog
 
-## 1.0.0
+## 0.6.0
 - Requested TIF image images are now written to a temporary file instead of to memory by default. 
 - Also a new plug option `:temp_dir` was added to define a custom temporary directory path for the generated TIF files. In memory creation is still possible by passing `:buffer` instead.
+- Added support for `:raw` and `:vips` image output formats.
+- Rewrote the core V3 plug module to support the `use` keyword instead of having to pass callback functions as options.
+- Removed the `rights`, `see_also`, `part_of` and `service` callbacks. Instead, you are now required to provide two callback functions: One for the `info.json` creation and one for the image data retrieval.
+- HTTP response headers can now be set in the new info and data request callbacks based on the requested identifier (thanks [neilberkman](https://github.com/neilberkman)).
 
 ## 0.5.0
 - Changed override options `:port`, `:host` and `:scheme` into callbacks to make values configurable at runtime.

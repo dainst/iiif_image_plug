@@ -39,13 +39,33 @@ defmodule DevServerRouter do
     init_opts: %Options{}
   )
 
+  forward("/custom_response_headers",
+    to: CustomResponseHeaderPlug,
+    init_opts: %Options{}
+  )
+
+  forward("/proxy_setup",
+    to: BehindProxyPlug,
+    init_opts: %Options{}
+  )
+
+  forward("/restricted_access",
+    to: CustomRequestErrorPlug,
+    init_opts: %Options{}
+  )
+
   forward("/",
     to: DefaultPlug,
-    init_opts: %Options{
-      max_width: 600,
-      max_height: 400,
-      max_area: 600 * 400,
-      extra_formats: [:webp, :png, :tif]
-    }
+    init_opts:
+      if Mix.env() == :test do
+        %Options{
+          max_width: 600,
+          max_height: 400,
+          max_area: 600 * 400,
+          extra_formats: [:webp, :png, :tif]
+        }
+      else
+        %Options{}
+      end
   )
 end

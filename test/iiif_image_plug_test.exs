@@ -31,7 +31,8 @@ defmodule IIIFImagePlug.V3Test do
       "sizeUpscaling"
     ],
     "height" => 300,
-    "id" => "http://localhost:4000/bentheim_mill.jpg",
+    # in the Elixir test environment, the default %Conn{} value for `:host` is "www.example.com" and for `:port` is 80.
+    "id" => "http://www.example.com:80/bentheim_mill.jpg",
     "maxArea" => 240_000,
     "maxHeight" => 400,
     "maxWidth" => 600,
@@ -66,7 +67,7 @@ defmodule IIIFImagePlug.V3Test do
     response = Jason.decode!(conn.resp_body)
 
     assert %{
-             "id" => "http://localhost:4000/some/nested/route/bentheim_mill.jpg"
+             "id" => "http://www.example.com:80/some/nested/route/bentheim_mill.jpg"
            } = response
   end
 
@@ -81,7 +82,7 @@ defmodule IIIFImagePlug.V3Test do
     response = Jason.decode!(conn.resp_body)
 
     assert %{
-             "id" => "http://localhost:4000/bentheim_mill_pyramid.tif",
+             "id" => "http://www.example.com:80/bentheim_mill_pyramid.tif",
              "sizes" => [%{"height" => 150, "type" => "Size", "width" => 250}]
            } = response
   end
@@ -91,14 +92,14 @@ defmodule IIIFImagePlug.V3Test do
       @expected_file_info
       |> Map.merge(%{
         "rights" => "https://creativecommons.org/publicdomain/zero/1.0/",
-        "part_of" => [
+        "partOf" => [
           %{
             "id" => "https://example.org/manifest/1",
             "label" => %{"en" => ["A Book"]},
             "type" => "Manifest"
           }
         ],
-        "see_also" => [
+        "seeAlso" => [
           %{
             "format" => "text/xml",
             "id" => "https://example.org/image1.xml",
@@ -126,7 +127,8 @@ defmodule IIIFImagePlug.V3Test do
 
     response_default = Jason.decode!(conn.resp_body)
 
-    extended = Map.replace(extended, "id", "http://localhost:4000/extra_info/bentheim_mill.jpg")
+    extended =
+      Map.replace(extended, "id", "http://www.example.com:80/extra_info/bentheim_mill.jpg")
 
     conn = conn(:get, "/extra_info/#{@sample_jpg_name}/info.json")
     conn = DevServerRouter.call(conn, @opts)
@@ -144,7 +146,7 @@ defmodule IIIFImagePlug.V3Test do
     assert conn.state == :set
     assert conn.status == 302
 
-    assert ["http://localhost:4000/bentheim_mill_pyramid.tif/info.json"] =
+    assert ["http://www.example.com:80/bentheim_mill_pyramid.tif/info.json"] =
              Plug.Conn.get_resp_header(conn, "location")
   end
 
@@ -219,7 +221,7 @@ defmodule IIIFImagePlug.V3Test do
   describe "image data endpoint" do
     test "returns the expected image data for the different test images" do
       get_expected_file_paths()
-      |> Enum.each(fn {file_name, path} ->
+      |> Task.async_stream(fn {file_name, path} ->
         conn = conn(:get, "/#{file_name}/#{path}" |> URI.encode())
 
         conn = DevServerRouter.call(conn, @opts)
@@ -251,6 +253,7 @@ defmodule IIIFImagePlug.V3Test do
             assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
         end
       end)
+      |> Enum.to_list()
     end
 
     test "returns the correct image data of the rectangle provided by the official validator" do
@@ -437,6 +440,124 @@ defmodule IIIFImagePlug.V3Test do
       {:ok, from_response} = Image.from_binary(conn.resp_body)
 
       assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+    end
+
+    test "sets response headers for image info when configured" do
+      conn = conn(:get, "/custom_response_headers/#{@sample_jpg_name}/info.json")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == [
+               "public, max-age=31536000, immutable"
+             ]
+
+      conn = conn(:get, "/custom_response_headers/private_image.jpg/info.json")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == ["private, max-age=3600"]
+    end
+
+    test "sets response headers for image data when configured" do
+      conn = conn(:get, "/custom_response_headers/#{@sample_jpg_name}/full/max/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == [
+               "public, max-age=31536000, immutable"
+             ]
+
+      conn = conn(:get, "/custom_response_headers/private_image.jpg/full/max/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == ["private, max-age=3600"]
+    end
+
+    test "does not set response headers for redirects" do
+      conn = conn(:get, "/custom_response_headers/#{@sample_jpg_name}")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :set]
+      assert conn.status == 302
+      # Redirects should not have our custom cache headers
+      cache_control_headers = Plug.Conn.get_resp_header(conn, "cache-control")
+      refute "public, max-age=31536000, immutable" in cache_control_headers
+    end
+
+    test "does not set response headers for errors" do
+      conn = conn(:get, "/custom_response_header/nonexistent.jpg/full/max/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 404
+
+      # The test plug seems to set default headers, we just care that our custom headers aren't set
+      cache_control_headers = Plug.Conn.get_resp_header(conn, "cache-control")
+      refute "public, max-age=31536000, immutable" in cache_control_headers
+    end
+
+    test "scheme, host and port get overridden by callback" do
+      conn = conn(:get, "/proxy_setup/#{@sample_jpg_name}/info.json")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      expected_id = "https://subdomain.example.org:1337/proxy_setup/#{@sample_jpg_name}"
+
+      %{"id" => ^expected_id} = Jason.decode!(conn.resp_body)
+    end
+
+    test "request errors defined in callbacks are returned correctly" do
+      # Information request for restricted identifier should get blocked.
+      conn = conn(:get, "/restricted_access/restricted.jpg/info.json")
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 401
+
+      assert %{"error" => "unauthorized"} = Jason.decode!(conn.resp_body)
+      assert ["something value"] = Plug.Conn.get_resp_header(conn, "something-key")
+
+      # Information request for sample image should still work.
+      conn = conn(:get, "/restricted_access/#{@sample_jpg_name}/info.json")
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      # Data request for restricted identifier should get blocked.
+      conn = conn(:get, "/restricted_access/restricted.jpg/full/max/0/default.jpg")
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 401
+
+      assert %{"error" => "unauthorized"} = Jason.decode!(conn.resp_body)
+      assert ["something value"] = Plug.Conn.get_resp_header(conn, "something-key")
+
+      # Data request for sample image should still work.
+      conn = conn(:get, "/restricted_access/#{@sample_jpg_name}/full/max/0/default.jpg")
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
     end
   end
 

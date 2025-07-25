@@ -1,43 +1,58 @@
 defmodule IIIFImagePlug.V3.Data do
-  alias Vix.Vips.Operation
-  alias Vix.Vips.Image
+  import Plug.Conn
 
-  alias IIIFImagePlug.V3.Data.Size.Scaling
-  alias IIIFImagePlug.V3.Data.Region.ExtractArea
-  alias IIIFImagePlug.V3.Data.Quality
-  alias IIIFImagePlug.V3.Data.Rotation
-  alias IIIFImagePlug.V3.Data.Size
-  alias IIIFImagePlug.V3.Data.Region
+  alias IIIFImagePlug.V3.RequestError
 
-  @moduledoc """
-  Produces image data based on the given IIIF parameters and Plug settings.
-  """
+  alias Vix.Vips.{
+    Image,
+    Operation
+  }
+
+  alias IIIFImagePlug.V3.{
+    DataRequest,
+    Options
+  }
+
+  alias IIIFImagePlug.V3.Data.{
+    Size,
+    Size.Scaling,
+    Region,
+    Region.ExtractArea,
+    Rotation,
+    Quality
+  }
+
+  @moduledoc false
 
   @doc """
-  Get a transformed version of the image defined by `identifier` and the other provided parameters,
-  validated against the plug's settings.
+  Processes and returns an image data request for the given `identifier` and parameters.
 
-  Returns
-  - `{%Vix.Vips.Image{}, format}` on success, where format is one of the preferred or extra format atoms defined
-  in the plug settings.
-  - `{:error, reason}` if a parameter was invalid.
+  ## Returns
+
+  - `{conn, image, format}` on success, where conn is an updated `Plug.Conn` struct (if the plug defines its own
+  response headers), image is an `Vix.Vips.Image` struct and `format` is the succesfully parsed file extension as a binary string.
+  - `{:error, reason}` otherwise.
   """
   def get(
+        %Plug.Conn{} = conn,
         identifier,
         region_param,
         size_param,
         rotation_param,
         quality_and_format_param,
-        settings,
-        module
-      ) do
-    {:ok, path} = module.identifier_to_path(identifier)
-
-    with {:file_exists, true} <- {:file_exists, File.exists?(path)},
+        %Options{} = options,
+        using_module
+      )
+      when is_binary(identifier) and is_binary(region_param) and is_binary(size_param) and
+             is_binary(rotation_param) and is_binary(quality_and_format_param) do
+    with {:ok, %DataRequest{path: path, response_headers: headers}} <-
+           using_module.data_request(identifier),
+         {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},
+         # Apply autorot to get apply exif rotations before any further operations.
          {:file_opened, {:ok, {file, _}}} <- {:file_opened, Operation.autorot(file)},
          {:quality_and_format_parsed, %{quality: quality, format: format}} <-
-           {:quality_and_format_parsed, Quality.parse(quality_and_format_param, settings)} do
+           {:quality_and_format_parsed, Quality.parse(quality_and_format_param, options)} do
       page_count =
         try do
           Image.n_pages(file)
@@ -64,14 +79,23 @@ defmodule IIIFImagePlug.V3.Data do
           []
         end
 
-      case transform(file, region_param, size_param, rotation_param, quality, pages, settings) do
+      case transform(file, region_param, size_param, rotation_param, quality, pages, options) do
         %Image{} = image ->
-          {image, format}
+          {
+            Enum.reduce(headers, conn, fn {key, value}, acc ->
+              put_resp_header(acc, key, value)
+            end),
+            image,
+            format
+          }
 
         error ->
           error
       end
     else
+      {:error, %RequestError{}} = error ->
+        error
+
       {:file_exists, false} ->
         {:error, :no_file}
 
@@ -90,13 +114,13 @@ defmodule IIIFImagePlug.V3.Data do
          rotation_param,
          quality_param,
          pages,
-         settings
+         options
        ) do
     with %Region.ExtractArea{} = area <- Region.parse(file, region_param),
          %Rotation.Rotation{} = rotation <- Rotation.parse(rotation_param),
          %Image{} = image <- Region.apply(file, area),
          # Scaling factor can only be evaluated based off the selected region in some cases.
-         %Size.Scaling{} = scaling <- Size.parse(image, size_param, settings),
+         %Size.Scaling{} = scaling <- Size.parse(image, size_param, options),
          %Image{} = image <- Size.apply(image, scaling),
          %Image{} = image <- page_optimize(area, scaling, file, image, pages),
          # Average is used for creating bitonal images, and we calculate it specifically for the

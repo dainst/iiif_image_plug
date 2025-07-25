@@ -4,8 +4,12 @@ defmodule IIIFImagePlug.V3 do
   alias Vix.Vips.Image
 
   alias IIIFImagePlug.V3.{
+    Data,
+    DataRequest,
+    Info,
+    InfoRequest,
     Options,
-    Data
+    RequestError
   }
 
   import Plug.Conn
@@ -17,49 +21,45 @@ defmodule IIIFImagePlug.V3 do
   """
 
   @doc """
-  __Required__ callback function that resolves a given IIIF identifier to a file path (string).
+  __Required__ callback function invoked on information requests (`info.json`), that maps the given _identifier_ to an
+  image file.
+
+  ## Returns
+
+  - `{:ok, info_request}` on success, where `info_request` is a `IIIFImagePlug.V3.InfoRequest` struct.
+  - `{:error, request_error}` otherwise, where `request_error` is a `IIIFImagePlug.V3.RequestError` struct.
+
   """
-  @callback identifier_to_path(identifier :: String.t()) ::
-              {:ok, String.t()} | {:error, atom()}
+  @callback info_request(identifier :: String.t()) ::
+              {:ok, InfoRequest.t()} | {:error, RequestError.t()}
 
   @doc """
-  __Optional__ callback function to override the scheme evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+  __Required__ callback function invoked on image data requests, that maps the given _identifier_ to an
+  image file.
+
+  ## Returns
+
+  - `{:ok, info_request}` on success, where `info_request` is a `IIIFImagePlug.V3.InfoRequest` struct.
+  - `{:error, request_error}` otherwise, where `request_error` is a `IIIFImagePlug.V3.RequestError` struct.
+  """
+  @callback data_request(identifier :: String.t()) ::
+              {:ok, DataRequest.t()} | {:error, RequestError.t()}
+
+  @doc """
+  __Optional__ callback function to override the `:scheme` ("http" or "https") evaluated from the `Plug.Conn`, useful if your Elixir app runs behind a
+  proxy.
   """
   @callback scheme() :: String.t() | nil
 
   @doc """
-  __Optional__ callback function to override the host evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+  __Optional__ callback function to override the `:host` evaluated from the `Plug.Conn`, useful if your Elixir app runs behind a proxy.
   """
   @callback host() :: String.t() | nil
 
   @doc """
-  __Optional__ callback function to override the port evaluated from the `%Plug.Conn{}`, useful if your Elixir app runs behind a proxy.
+  __Optional__ callback function to override the `:port` evaluated from the `Plug.Conn`, useful if your Elixir app runs behind a proxy.
   """
   @callback port() :: pos_integer() | nil
-
-  @doc """
-  __Optional__ callback function that returns a [rights](https://iiif.io/api/image/3.0/#56-rights) statement for a given identifier. If
-  `nil` is returned, the _rights_ key will be omitted in the _info.json_.
-  """
-  @callback rights(identifier :: String.t()) :: String.t() | nil
-
-  @doc """
-  __Optional__ callback function that returns a list of [part of](https://iiif.io/api/image/3.0/#58-linking-properties) properties for
-  a given identifier. If an empty list is returned, the _partOf_ key will be omitted in the _info.json_.
-  """
-  @callback part_of(identifier :: String.t()) :: list()
-
-  @doc """
-  __Optional__ callback function that returns a list of [see also](https://iiif.io/api/image/3.0/#58-linking-properties) properties for
-  a given identifier. If an empty list is returned, the _seeAlso_ key will be omitted in the _info.json_.
-  """
-  @callback see_also(identifier :: String.t()) :: list()
-
-  @doc """
-  __Optional__ callback function that returns a list of [service](https://iiif.io/api/image/3.0/#58-linking-properties) properties for
-  a given identifier. If an empty list is returned, the _service_ key will be omitted in the _info.json_.
-  """
-  @callback service(identifier :: String.t()) :: list()
 
   @doc """
   __Optional__ callback function that lets you override the default plug error response, which is defined as follows:
@@ -73,7 +73,7 @@ defmodule IIIFImagePlug.V3 do
         )
       end
 
-  One use case might be sending your own placeholder image instead of the JSON for failed image requests.
+  One use case might be sending your own placeholder image instead of the JSON for failed data requests.
   """
   @callback send_error(
               conn :: Conn.t(),
@@ -98,11 +98,6 @@ defmodule IIIFImagePlug.V3 do
       def host(), do: IIIFImagePlug.V3.host()
       def port(), do: IIIFImagePlug.V3.port()
 
-      def rights(identifier), do: IIIFImagePlug.V3.rights(identifier)
-      def part_of(identifier), do: IIIFImagePlug.V3.part_of(identifier)
-      def see_also(identifier), do: IIIFImagePlug.V3.see_also(identifier)
-      def service(identifier), do: IIIFImagePlug.V3.service(identifier)
-
       # See https://dockyard.com/blog/2024/04/18/use-macro-with-defoverridable-function-fallbacks
       #
       # Basically if no `send_error/3` is defined by the user of the library, the plug will use the default
@@ -119,10 +114,6 @@ defmodule IIIFImagePlug.V3 do
       defoverridable scheme: 0,
                      host: 0,
                      port: 0,
-                     rights: 1,
-                     part_of: 1,
-                     see_also: 1,
-                     service: 1,
                      send_error: 3
     end
   end
@@ -148,20 +139,30 @@ defmodule IIIFImagePlug.V3 do
     |> resp(:found, "")
     |> put_resp_header(
       "location",
-      "#{construct_image_id(conn, identifier, module)}/info.json"
+      "#{Info.construct_image_id(conn, identifier, module)}/info.json"
     )
   end
 
   def call(
         %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
-        options,
+        %Options{} = options,
         module
       ) do
-    case generate_image_info(conn, identifier, options, module) do
-      {:ok, info} ->
+    case Info.generate_image_info(conn, identifier, options, module) do
+      {:ok, {conn, info}} ->
         conn
         |> put_resp_content_type("application/ld+json")
         |> send_resp(200, Jason.encode!(info))
+
+      {:error, %RequestError{status_code: code, msg: msg, response_headers: headers}} ->
+        headers
+        |> Enum.reduce(conn, fn {key, value}, acc ->
+          Plug.Conn.put_resp_header(acc, key, value)
+        end)
+        |> module.send_error(
+          code,
+          msg
+        )
 
       {:error, :no_file} ->
         module.send_error(
@@ -194,6 +195,7 @@ defmodule IIIFImagePlug.V3 do
         module
       ) do
     case Data.get(
+           conn,
            identifier,
            URI.decode(region),
            URI.decode(size),
@@ -202,10 +204,14 @@ defmodule IIIFImagePlug.V3 do
            options,
            module
          ) do
-      {%Image{} = image, format} ->
+      {
+        %Plug.Conn{} = conn,
+        %Image{} = image,
+        format
+      } ->
         cond do
           format not in @streamable and temp_dir == :buffer ->
-            send_buffered(conn, image, format, identifier, options)
+            send_buffered(conn, image, format)
 
           format not in @streamable ->
             prefix = :crypto.strong_rand_bytes(8) |> Base.url_encode64() |> binary_part(0, 8)
@@ -213,11 +219,21 @@ defmodule IIIFImagePlug.V3 do
             file_name =
               "#{prefix}_#{quality_and_format}"
 
-            send_temporary_file(conn, image, Path.join(temp_dir, file_name), identifier, options)
+            send_temporary_file(conn, image, Path.join(temp_dir, file_name))
 
           true ->
-            send_stream(conn, image, format, identifier, options)
+            send_stream(conn, image, format)
         end
+
+      {:error, %RequestError{status_code: code, msg: msg, response_headers: headers}} ->
+        headers
+        |> Enum.reduce(conn, fn {key, value}, acc ->
+          Plug.Conn.put_resp_header(acc, key, value)
+        end)
+        |> module.send_error(
+          code,
+          msg
+        )
 
       {:error, :no_file} ->
         module.send_error(
@@ -256,15 +272,13 @@ defmodule IIIFImagePlug.V3 do
     )
   end
 
-  defp send_buffered(conn, %Image{} = image, format, identifier, options) do
+  defp send_buffered(conn, %Image{} = image, format) do
     {:ok, buffer} = Image.write_to_buffer(image, ".#{format}")
 
-    conn
-    |> maybe_put_cache_headers(identifier, options)
-    |> send_resp(200, buffer)
+    send_resp(conn, 200, buffer)
   end
 
-  defp send_temporary_file(conn, %Image{} = image, file_path, identifier, options) do
+  defp send_temporary_file(conn, %Image{} = image, file_path) do
     parent = self()
 
     spawn(fn ->
@@ -278,18 +292,13 @@ defmodule IIIFImagePlug.V3 do
 
     Image.write_to_file(image, file_path)
 
-    conn
-    |> maybe_put_cache_headers(identifier, options)
-    |> send_file(200, file_path)
+    send_file(conn, 200, file_path)
   end
 
-  defp send_stream(conn, %Image{} = image, format, identifier, options) do
+  defp send_stream(conn, %Image{} = image, format) do
     stream = Image.write_to_stream(image, ".#{format}")
 
-    conn =
-      conn
-      |> maybe_put_cache_headers(identifier, options)
-      |> send_chunked(200)
+    conn = send_chunked(conn, 200)
 
     Enum.reduce_while(stream, conn, fn data, conn ->
       case chunk(conn, data) do
@@ -308,175 +317,7 @@ defmodule IIIFImagePlug.V3 do
     )
   end
 
-  def construct_image_id(
-        %Conn{} = conn,
-        identifier,
-        module
-      )
-      when is_binary(identifier) do
-    scheme = module.scheme() || conn.scheme
-    host = module.host() || conn.scheme
-    port = module.port() || conn.port
-
-    Enum.join([
-      scheme,
-      "://",
-      host,
-      if(port != nil, do: ":#{port}", else: ""),
-      if(conn.script_name != [], do: Path.join(["/"] ++ conn.script_name), else: ""),
-      "/",
-      identifier
-    ])
-  end
-
   def scheme(), do: nil
   def host(), do: nil
   def port(), do: nil
-
-  def generate_image_info(conn, identifier, options, module) do
-    with {:identifier, {:ok, path}} <- {:identifier, module.identifier_to_path(identifier)},
-         {:file_exists, true} <- {:file_exists, File.exists?(path)},
-         {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)} do
-      {
-        :ok,
-        %{
-          "@context": "http://iiif.io/api/image/3/context.json",
-          id: "#{construct_image_id(conn, identifier, module)}",
-          type: "ImageService3",
-          protocol: "http://iiif.io/api/image",
-          width: Image.width(file),
-          height: Image.height(file),
-          profile: "level2",
-          maxHeight: options.max_height,
-          maxWidth: options.max_width,
-          maxArea: options.max_area,
-          extra_features: [
-            "mirroring",
-            "regionByPct",
-            "regionByPx",
-            "regionSquare",
-            "rotationArbitrary",
-            "sizeByConfinedWh",
-            "sizeByH",
-            "sizeByPct",
-            "sizeByW",
-            "sizeByWh",
-            "sizeUpscaling"
-          ],
-          preferredFormat: options.preferred_formats,
-          extraFormats: options.extra_formats,
-          extraQualities: [:color, :gray, :bitonal]
-        }
-        |> maybe_add_rights(identifier, module)
-        |> maybe_add_part_of(identifier, module)
-        |> maybe_add_see_also(identifier, module)
-        |> maybe_add_service(identifier, module)
-        |> maybe_add_sizes(file, path)
-      }
-    else
-      {:identifier, _} ->
-        {:error, :unknown_identifier}
-
-      {:file_exists, false} ->
-        {:error, :no_file}
-
-      {:file_opened, _} ->
-        {:error, :no_image_file}
-    end
-  end
-
-  def rights(_identifier), do: nil
-  def part_of(_identifier), do: []
-  def see_also(_identifier), do: []
-  def service(_identifier), do: []
-
-  defp maybe_add_rights(%{} = info, identifier, module) do
-    case module.rights(identifier) do
-      nil -> info
-      value -> Map.put(info, :rights, value)
-    end
-  end
-
-  defp maybe_add_part_of(%{} = info, identifier, module) do
-    case module.part_of(identifier) do
-      [] -> info
-      values -> Map.put(info, :part_of, values)
-    end
-  end
-
-  defp maybe_add_see_also(%{} = info, identifier, module) do
-    case module.see_also(identifier) do
-      [] -> info
-      values -> Map.put(info, :see_also, values)
-    end
-  end
-
-  defp maybe_add_service(%{} = info, identifier, module) do
-    case module.service(identifier) do
-      [] -> info
-      values -> Map.put(info, :service, values)
-    end
-  end
-
-  defp maybe_add_sizes(info, base_image, path) do
-    page_count =
-      try do
-        Image.n_pages(base_image)
-      rescue
-        _ -> 1
-      end
-
-    if page_count > 1 do
-      last_page = page_count - 1
-
-      sizes =
-        0..last_page
-        |> Stream.map(fn page ->
-          {:ok, page_image} = Image.new_from_file(path, page: page)
-
-          width = Image.width(page_image)
-          height = Image.height(page_image)
-
-          %{
-            type: "Size",
-            width: width,
-            height: height
-          }
-        end)
-        |> Stream.reject(fn %{width: width} ->
-          width == Image.width(base_image)
-        end)
-        |> Enum.sort_by(fn %{width: width} -> width end)
-
-      Map.put(info, :sizes, sizes)
-    else
-      info
-    end
-  end
-
-  defp maybe_put_cache_headers(conn, identifier, %Options{
-         cache_control: cache_control,
-         identifier_to_cache_control_callback: callback
-       }) do
-    cache_header_value =
-      cond do
-        # Callback takes precedence
-        is_function(callback, 1) ->
-          callback.(identifier)
-
-        # Static cache control
-        is_binary(cache_control) ->
-          cache_control
-
-        # No cache control configured
-        true ->
-          nil
-      end
-
-    if cache_header_value do
-      put_resp_header(conn, "cache-control", cache_header_value)
-    else
-      conn
-    end
-  end
 end

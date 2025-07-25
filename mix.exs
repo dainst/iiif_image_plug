@@ -4,13 +4,14 @@ defmodule IIIFImagePlug.MixProject do
   def project do
     [
       app: :iiif_image_plug,
-      version: "0.5.0",
+      version: "0.6.0",
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       test_coverage: [
         ignore_modules: [
           Custom404Plug,
+          CustomResponseHeaderPlug,
           DefaultPlug,
           DevServer,
           DevServerRouter,
@@ -47,7 +48,7 @@ defmodule IIIFImagePlug.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:plug, "~> 1.16"},
+      {:plug, "~> 1.18"},
       {:vix, "~> 0.33.0"},
       {:jason, "~> 1.4"},
       {:bandit, "~> 1.6", only: [:test, :dev]},
@@ -63,7 +64,9 @@ defmodule IIIFImagePlug.MixProject do
       licenses: ["Apache-2.0"],
       links: %{
         "GitHub" => "https://github.com/dainst/iiif_image_plug",
-        "International Image Interoperability Framework" => "https://iiif.io/"
+        "International Image Interoperability Framework" => "https://iiif.io/",
+        "Elixir Forum" =>
+          "https://elixirforum.com/t/iiif-image-plug-an-elixir-plug-implementing-the-iiif-image-api-specification/"
       }
     ]
   end

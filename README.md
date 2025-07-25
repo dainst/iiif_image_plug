@@ -21,7 +21,7 @@ by adding `iiif_image_plug` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:iiif_image_plug, "~> 0.5.0"}
+    {:iiif_image_plug, "~> 0.6.0"}
   ]
 end
 ```
@@ -32,63 +32,87 @@ Assuming you want to serve IIIF in your plug based server at "/iiif/v3", add a f
 
 ```elixir
   forward("/iiif/v3",
-    to: IIIFImagePlug.V3,
-    init_opts: %{
-      identifier_to_path_callback: &ImageStore.identifier_to_path/1
-    }
+    to: MyApp.IIIFPlug,
+    init_opts: %IIIFImagePlug.V3.Options{}
   )
 ```
 
-### Phoenix
 For [Phoenix](https://www.phoenixframework.org/) it would look slightly different:
 
 ```elixir
-  forward("/iiif/v3", IIIFImagePlug.V3, %{
-    identifier_to_path_callback: &ImageStore.identifier_to_path/1
-  })
+  forward("/iiif/v3", MyApp.IIIFPlug, %IIIFImagePlug.V3.Options{})
 ```
 
-The option `:identifier_to_path_callback` lets the plug map the IIIF [identifier](https://iiif.io/api/image/3.0/#21-image-request-uri-syntax) to an actual file path in your file system. 
+### Example plug
 
-`ImageStore.identifier_to_path/1` in this case might look something like this:
+A plug implementation may look something like this:
 
 ```elixir
-  def identifier_to_path(identifier) do
-    "/mnt/my_app_images/#{identifier}"
+defmodule MyApp.IIIFPlug do
+  use IIIFImagePlug.V3
+
+  # There are two required callbacks you have to implement, plus several optional ones. See the 
+  # `IIIFImagePlug.V3` documentation for more.
+
+  @impl true
+  def info_request(identifier) do
+    # The first required callback lets you inject some metadata from your application into the plug when it is responding to
+    # an information request (info.json) for a specific `identifier`. The only required field is `:path`, which tells 
+    # the plug the file system path matching the given `identifier`. Here we simply assume the `identifier` matches the file name
+    # in a flat single directory.
+
+    MyApp.ContextModule.get_image_metadata(identifier)
+    |> case do
+      %{path: path, rights_statement: rights} ->
+        {
+          :ok,
+          %IIIFImagePlug.V3.InfoRequest{
+            path: "/mnt/my_app_images/#{identifier}",
+            rights: rights
+          }
+        }
+      {:error, :not_found} ->
+        {
+          :error,
+          %IIIFImagePlug.V3.RequestError{
+            status_code: 404,
+            msg: :not_found
+          }
+        }
+    end
+  end
+
+  @impl true
+  def data_request(identifier) do
+    # The second required callback lets you inject some metadata from your application into the plug when it is responding to
+    # an actual image data request for a specific `identifier`. As with `info_request/1`, the only required field is `:path`, which tells 
+    # the plug the file system path matching the given `identifier`.
+    MyApp.ContextModule.get_image_path(identifier)
+    |> case do
+      {:ok, path} ->
+        {
+          :ok,
+          %IIIFImagePlug.V3.DataRequest{
+            path: "/mnt/my_app_images/#{identifier}"
+          }
+        }
+      {:error, :not_found} ->
+        {
+          :error,
+          %IIIFImagePlug.V3.RequestError{
+            status_code: 404,
+            msg: :not_found
+          }
+        }
+    end
   end
 ```
-
-A GET request `/iiif/v3/sample_image.jpg/info.json` would then cause the plug to look for an image file at `/mnt/my_app_images/sample_image.jpg` and return its metadata.
-
-For the complete list of plug options have a look at the module documentation.
-
-### Cache Headers
-
-The plug supports setting cache control headers on image responses to improve CDN and browser caching:
-
-```elixir
-# Static cache control for all images
-forward("/iiif/v3", IIIFImagePlug.V3, %{
-  identifier_to_path_callback: &ImageStore.identifier_to_path/1,
-  cache_control: "public, max-age=31536000, immutable"
-})
-
-# Dynamic cache control based on identifier
-forward("/iiif/v3", IIIFImagePlug.V3, %{
-  identifier_to_path_callback: &ImageStore.identifier_to_path/1,
-  identifier_to_cache_control_callback: fn
-    "private/" <> _ -> "private, max-age=3600"
-    _ -> "public, max-age=86400"
-  end
-})
-```
-
-Cache headers are only set on successful image responses (not on info.json, redirects, or errors).
 
 ### CORS 
 
-For your service to fully implement the API specification, you need to properly configure Cross-Origin Resource Sharing (CORS). This has to be done outside the context of this plug, one option could be to use the
-[CorsPlug](https://hexdocs.pm/cors_plug/readme.html) library:
+For your service to fully implement the API specification, you need to properly configure Cross-Origin Resource Sharing (CORS). You could
+either set the correct headers in your `info_request/1` or `data_request/1` implementation or configure the appropriate headers in a plug
+before this one ([cors_plug ](https://hex.pm/packages/cors_plug) was used in this example):
 
 ```elixir
 (..)
@@ -97,10 +121,8 @@ For your service to fully implement the API specification, you need to properly 
   plug(:dispatch)
 
   forward("/",
-    to: IIIFImagePlug.V3,
-    init_opts: %{
-      (..)
-    }
+    to: MyApp.IIIFPlug,
+    init_opts: (..)
   )
 end
 (..)
@@ -120,7 +142,7 @@ This repository comes with a minimalistic server, run the server with:
 iex -S mix run
 ```
 
-The metadata of the main sample file can now be accessed at http://127.0.0.1:4000/bentheim.jpg/info.json:
+The metadata of the main sample file [test/images/bentheim.jpg](test/images/bentheim.jpg) can now be accessed at http://localhost:4000/bentheim.jpg/info.json:
 
 ```json
 {
@@ -164,6 +186,6 @@ The metadata of the main sample file can now be accessed at http://127.0.0.1:400
 }
 ```
 
-The image data of the sample file can be viewed at http://127.0.0.1:4000/bentheim.jpg/full/max/0/default.jpg and you can start experimenting with the IIIF API parameters.
+The sample image can be viewed at http://localhost:4000/bentheim.jpg/full/max/0/default.jpg and you can start experimenting with the IIIF API parameters.
 
 ![Jacob van Ruisdael. Gezicht op kasteel Bentheim, circa 1653](test/images/bentheim.jpg)
