@@ -43,6 +43,8 @@ For [Phoenix](https://www.phoenixframework.org/) it would look slightly differen
   forward("/iiif/v3", MyApp.IIIFPlug, %IIIFImagePlug.V3.Options{})
 ```
 
+### Example plug
+
 The minimal plug implementation may look something like this:
 
 ```elixir
@@ -59,25 +61,51 @@ defmodule MyApp.IIIFPlug do
     # an information request (info.json) for a specific `identifier`. The only required field is `:path`, which tells 
     # the plug the file system path matching the given `identifier`. Here we simply assume the `identifier` matches the file name
     # in a flat single directory.
-    {
-      :ok,
-      %IIIFImagePlug.V3.InfoRequest{
-        path: "/mnt/my_app_images/#{identifier}"
-      }
-    }
+
+    MyApp.ContextModule.get_image_metadata(identifier)
+    |> case do
+      %{path: path, rights_statement: rights} ->
+        {
+          :ok,
+          %IIIFImagePlug.V3.InfoRequest{
+            path: "/mnt/my_app_images/#{identifier}",
+            rights: rights
+          }
+        }
+      {:error, :not_found} ->
+        {
+          :error,
+          %IIIFImagePlug.V3.RequestError{
+            status_code: 404,
+            msg: :not_found
+          }
+        }
+    end
   end
 
   @impl true
   def data_request(identifier) do
     # The second required callback lets you inject some metadata from your application into the plug when it is responding to
     # an actual image data request for a specific `identifier`. As with `info_request/1`, the only required field is `:path`, which tells 
-    # the plug the file system path matching the given `identifier`. 
-    {
-      :ok,
-      %IIIFImagePlug.V3.DataRequest{
-        path: "/mnt/my_app_images/#{identifier}"
-      }
-    }
+    # the plug the file system path matching the given `identifier`.
+    MyApp.ContextModule.get_image_path(identifier)
+    |> case do
+      {:ok, path} ->
+        {
+          :ok,
+          %IIIFImagePlug.V3.DataRequest{
+            path: "/mnt/my_app_images/#{identifier}"
+          }
+        }
+      {:error, :not_found} ->
+        {
+          :error,
+          %IIIFImagePlug.V3.RequestError{
+            status_code: 404,
+            msg: :not_found
+          }
+        }
+    end
   end
 ```
 
