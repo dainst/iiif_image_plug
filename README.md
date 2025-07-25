@@ -79,29 +79,6 @@ defmodule MyApp.IIIFPlug do
   end
 ```
 
-### Cache Headers
-
-The plug supports setting cache control headers on image responses to improve CDN and browser caching:
-
-```elixir
-# Static cache control for all images
-forward("/iiif/v3", IIIFImagePlug.V3, %{
-  identifier_to_path_callback: &ImageStore.identifier_to_path/1,
-  cache_control: "public, max-age=31536000, immutable"
-})
-
-# Dynamic cache control based on identifier
-forward("/iiif/v3", IIIFImagePlug.V3, %{
-  identifier_to_path_callback: &ImageStore.identifier_to_path/1,
-  identifier_to_cache_control_callback: fn
-    "private/" <> _ -> "private, max-age=3600"
-    _ -> "public, max-age=86400"
-  end
-})
-```
-
-Cache headers are only set on successful image responses (not on info.json, redirects, or errors).
-
 ### CORS 
 
 For your service to fully implement the API specification, you need to properly configure Cross-Origin Resource Sharing (CORS). This has to be done outside the context of this plug, one option could be to use the
