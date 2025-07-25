@@ -33,7 +33,7 @@ Assuming you want to serve IIIF in your plug based server at "/iiif/v3", add a f
 ```elixir
   forward("/iiif/v3",
     to: MyApp.IIIFPlug,
-    init_opts: %{init_opts: %IIIFImagePlug.V3.Options{}}
+    init_opts: %IIIFImagePlug.V3.Options{}
   )
 ```
 
