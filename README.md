@@ -164,4 +164,6 @@ The metadata of the main sample file can now be accessed at http://127.0.0.1:400
 }
 ```
 
-The image data of the sample file can be viewed at http://127.0.0.1:4000/bentheim.jpg/full/max/0/default.jpg and you are able to play around with the IIIF API parameters.
+The image data of the sample file can be viewed at http://127.0.0.1:4000/bentheim.jpg/full/max/0/default.jpg and you can start experimenting with the IIIF API parameters.
+
+![Jacob van Ruisdael. Gezicht op kasteel Bentheim, circa 1653](test/images/bentheim.jpg)
