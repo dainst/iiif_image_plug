@@ -1,6 +1,6 @@
 defmodule IIIFImagePlug.V3.InfoRequest do
   @moduledoc """
-  Used to inject values from your application into the plug when responding to information request (info.json).
+  A struct used to inject values from your application into the plug when responding to information request (info.json).
 
   See also `c:IIIFImagePlug.V3.info_request/1`.
 

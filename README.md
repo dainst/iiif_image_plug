@@ -92,7 +92,10 @@ defmodule MyApp.IIIFPlug do
         {
           :ok,
           %IIIFImagePlug.V3.DataRequest{
-            path: path
+            path: path,      
+            response_headers: [
+              {"cache-control", "public, max-age=31536000, immutable"}
+            ]
           }
         }
       {:error, :not_found} ->
