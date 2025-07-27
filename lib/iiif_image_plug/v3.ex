@@ -80,7 +80,7 @@ defmodule IIIFImagePlug.V3 do
   @callback send_error(
               conn :: Conn.t(),
               status_code :: number(),
-              error_code :: atom()
+              msg :: atom()
             ) :: Conn.t()
 
   defmacro __using__(_opts) do
@@ -107,8 +107,8 @@ defmodule IIIFImagePlug.V3 do
       # normally 100% replace the default. Because we want to give the users the opportunity to customize only specific
       # errors (based on pattern matching), the @before_compile below will re-add our defaults as a fallback.
 
-      def send_error(%Conn{} = conn, status_code, error_type) do
-        IIIFImagePlug.V3.send_error(conn, status_code, error_type)
+      def send_error(%Conn{} = conn, status_code, msg) do
+        IIIFImagePlug.V3.send_error(conn, status_code, msg)
       end
 
       @before_compile {IIIFImagePlug.V3, :add_send_error_fallback}
@@ -123,8 +123,8 @@ defmodule IIIFImagePlug.V3 do
   @doc false
   defmacro add_send_error_fallback(_env) do
     quote do
-      def send_error(%Conn{} = conn, status_code, error_type) do
-        IIIFImagePlug.V3.send_error(conn, status_code, error_type)
+      def send_error(%Conn{} = conn, status_code, msg) do
+        IIIFImagePlug.V3.send_error(conn, status_code, msg)
       end
     end
   end
@@ -314,12 +314,12 @@ defmodule IIIFImagePlug.V3 do
   end
 
   @doc false
-  def send_error(conn, status_code, error_type) do
+  def send_error(conn, status_code, msg) do
     conn
     |> put_resp_content_type("application/json")
     |> send_resp(
       status_code,
-      Jason.encode!(%{error: error_type})
+      Jason.encode!(%{error: msg})
     )
   end
 
