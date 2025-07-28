@@ -51,14 +51,17 @@ A plug implementation may look something like this:
 defmodule MyApp.IIIFPlug do
   use IIIFImagePlug.V3
 
-  # There are two required callbacks you have to implement, plus several optional ones. See the 
-  # `IIIFImagePlug.V3` documentation for more.
+  # There are two required callbacks you have to implement, plus 
+  # several optional ones. See the `IIIFImagePlug.V3` 
+  # documentation for more.
 
   @impl true
   def info_request(identifier) do
-    # The first required callback lets you inject some metadata from your application into the plug when it is responding to
-    # an information request (info.json) for a specific `identifier`. The only required field is `:path`, which tells 
-    # the plug the file system path matching the given `identifier`.
+    # The first required callback lets you inject some metadata 
+    # from your application into the plug when it is responding to
+    # an information request (info.json) for a specific `identifier`. 
+    # The only required field is `:path`, which tells the plug the 
+    # file system path matching the given `identifier`.
 
     MyApp.ContextModule.get_image_metadata(identifier)
     |> case do
@@ -83,9 +86,11 @@ defmodule MyApp.IIIFPlug do
 
   @impl true
   def data_request(identifier) do
-    # The second required callback lets you inject some metadata from your application into the plug when it is responding to
-    # an actual image data request for a specific `identifier`. As with `info_request/1`, the only required field is `:path`, which tells 
-    # the plug the file system path matching the given `identifier`.
+    # The second required callback lets you inject some metadata 
+    # from your application into the plug when it is responding to
+    # an actual image data request for a specific `identifier`. As 
+    # with `info_request/1`, the only required field is `:path`, which 
+    # tells the plug the file system path matching the given `identifier`.
     MyApp.ContextModule.get_image_path(identifier)
     |> case do
       {:ok, path} ->
