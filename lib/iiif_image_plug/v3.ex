@@ -100,7 +100,7 @@ defmodule IIIFImagePlug.V3 do
 
   ## Example
 
-      def scheme(), do: "https:"
+      def scheme(), do: "https"
   """
   @callback scheme() :: String.t() | nil
 
