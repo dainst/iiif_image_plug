@@ -26,7 +26,7 @@ defmodule IIIFImagePlug.V3.RequestError do
 
   @type t :: %__MODULE__{
           status_code: pos_integer(),
-          msg: atom() | String.t(),
+          msg: atom(),
           response_headers: list(tuple())
         }
 end
