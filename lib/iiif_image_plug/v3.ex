@@ -393,6 +393,9 @@ defmodule IIIFImagePlug.V3 do
   defp send_buffered(conn, %Image{} = image, format) do
     {:ok, buffer} = Image.write_to_buffer(image, ".#{format}")
 
+    # Use the requested format for content-type (since that's what we're delivering)
+    conn = put_resp_content_type_from_format(conn, format)
+
     send_resp(conn, 200, buffer)
   end
 
@@ -410,11 +413,18 @@ defmodule IIIFImagePlug.V3 do
 
     Image.write_to_file(image, file_path)
 
+    # Detect format from the written file path
+    format = Path.extname(file_path) |> String.trim_leading(".")
+    conn = put_resp_content_type_from_format(conn, format)
+
     send_file(conn, 200, file_path)
   end
 
   defp send_stream(conn, %Image{} = image, format) do
     stream = Image.write_to_stream(image, ".#{format}")
+
+    # Use the requested format for content-type (since that's what we're streaming)
+    conn = put_resp_content_type_from_format(conn, format)
 
     conn = send_chunked(conn, 200)
 
@@ -424,6 +434,36 @@ defmodule IIIFImagePlug.V3 do
         {:error, :closed} -> {:halt, conn}
       end
     end)
+  end
+
+  defp put_resp_content_type_from_format(conn, format) do
+    # Only set content-type if not already set by response_headers
+    case get_resp_header(conn, "content-type") do
+      [] ->
+        content_type = format_to_content_type(format)
+        put_resp_content_type(conn, content_type)
+
+      _ ->
+        conn
+    end
+  end
+
+  defp format_to_content_type(format) do
+    case String.downcase(format) do
+      "jpg" -> "image/jpeg"
+      "jpeg" -> "image/jpeg"
+      "png" -> "image/png"
+      "gif" -> "image/gif"
+      "webp" -> "image/webp"
+      "svg" -> "image/svg+xml"
+      "heif" -> "image/heif"
+      "heic" -> "image/heif"
+      "tif" -> "image/tiff"
+      "tiff" -> "image/tiff"
+      "bmp" -> "image/bmp"
+      "avif" -> "image/avif"
+      _ -> "application/octet-stream"
+    end
   end
 
   @doc false
