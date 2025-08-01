@@ -511,6 +511,110 @@ defmodule IIIFImagePlug.V3Test do
       refute "public, max-age=31536000, immutable" in cache_control_headers
     end
 
+    test "sets correct content-type based on actual image format for JPEG" do
+      conn = conn(:get, "/#{@sample_jpg_name}/full/max/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+      [content_type] = Plug.Conn.get_resp_header(conn, "content-type")
+      assert String.starts_with?(content_type, "image/jpeg")
+    end
+
+    test "sets correct content-type based on actual image format for PNG" do
+      conn = conn(:get, "/#{@sample_jpg_name}/full/max/0/default.png")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+      [content_type] = Plug.Conn.get_resp_header(conn, "content-type")
+      assert String.starts_with?(content_type, "image/png")
+    end
+
+    test "sets correct content-type based on actual image format for WebP" do
+      conn = conn(:get, "/#{@sample_jpg_name}/full/max/0/default.webp")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+      [content_type] = Plug.Conn.get_resp_header(conn, "content-type")
+      assert String.starts_with?(content_type, "image/webp")
+    end
+
+    test "sets correct content-type based on actual image format for TIFF" do
+      conn = conn(:get, "/#{@sample_pyramid_tif_name}/full/max/0/default.tif")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :file]
+      assert conn.status == 200
+      [content_type] = Plug.Conn.get_resp_header(conn, "content-type")
+      assert String.starts_with?(content_type, "image/tiff")
+    end
+
+    test "response headers from DataRequest are applied along with correct content-type" do
+      conn = conn(:get, "/custom_response_headers/#{@sample_jpg_name}/full/max/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      # Custom headers should be applied
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == [
+               "public, max-age=31536000, immutable"
+             ]
+
+      # Content-type should be auto-detected
+      [content_type] = Plug.Conn.get_resp_header(conn, "content-type")
+      assert String.starts_with?(content_type, "image/jpeg")
+    end
+
+    test "custom content-type in response headers is preserved" do
+      # Test that custom content-type headers in DataRequest are preserved
+      conn = conn(:get, "/content_type_override/custom_type.jpg/full/max/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state in [:sent, :chunked]
+      assert conn.status == 200
+
+      # Custom content-type should be preserved
+      assert Plug.Conn.get_resp_header(conn, "content-type") == ["image/custom"]
+
+      # Other custom headers should also be applied
+      assert Plug.Conn.get_resp_header(conn, "x-custom-header") == ["test"]
+    end
+
+    test "content-type detection works for all send methods" do
+      # Test buffered send (TIFF with buffer option)
+      conn = conn(:get, "/buffered_tiffs/#{@sample_jpg_name}/full/max/0/default.tif")
+      conn = DevServerRouter.call(conn, @opts)
+      assert conn.state == :sent
+      assert conn.status == 200
+      [content_type] = Plug.Conn.get_resp_header(conn, "content-type")
+      assert String.starts_with?(content_type, "image/tiff")
+
+      # Test stream send (JPEG)
+      conn = conn(:get, "/#{@sample_jpg_name}/full/max/0/default.jpg")
+      conn = DevServerRouter.call(conn, @opts)
+      assert conn.state == :chunked
+      assert conn.status == 200
+      [content_type] = Plug.Conn.get_resp_header(conn, "content-type")
+      assert String.starts_with?(content_type, "image/jpeg")
+
+      # Test file send (regular TIFF)
+      conn = conn(:get, "/#{@sample_jpg_name}/full/max/0/default.tif")
+      conn = DevServerRouter.call(conn, @opts)
+      assert conn.state in [:sent, :file]
+      assert conn.status == 200
+      [content_type] = Plug.Conn.get_resp_header(conn, "content-type")
+      assert String.starts_with?(content_type, "image/tiff")
+    end
+
     test "scheme, host and port get overridden by callback" do
       conn = conn(:get, "/proxy_setup/#{@sample_jpg_name}/info.json")
 

@@ -54,6 +54,11 @@ defmodule DevServerRouter do
     init_opts: %Options{}
   )
 
+  forward("/content_type_override",
+    to: ContentTypeOverridePlug,
+    init_opts: %Options{}
+  )
+
   forward("/",
     to: DefaultPlug,
     init_opts:

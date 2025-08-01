@@ -168,3 +168,37 @@ defmodule CustomRequestErrorPlug do
     }
   end
 end
+
+defmodule ContentTypeOverridePlug do
+  @moduledoc false
+  use IIIFImagePlug.V3
+
+  alias IIIFImagePlug.V3.{
+    DataRequest,
+    InfoRequest
+  }
+
+  @impl true
+  def info_request(identifier), do: DefaultPlug.info_request(identifier)
+
+  @impl true
+  def data_request(identifier) do
+    # Test that custom content-type headers are preserved
+    case identifier do
+      "custom_type.jpg" ->
+        {
+          :ok,
+          %DataRequest{
+            path: "test/images/bentheim_mill.jpg",
+            response_headers: [
+              {"content-type", "image/custom"},
+              {"x-custom-header", "test"}
+            ]
+          }
+        }
+
+      _ ->
+        DefaultPlug.data_request(identifier)
+    end
+  end
+end
