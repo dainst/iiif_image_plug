@@ -280,4 +280,14 @@ defmodule IIIFImagePlug.V3.Data.Size do
         {:error, :invalid_size}
     end
   end
+
+  defp parse_w_h(
+         _image,
+         _not_a_list_with_two_values,
+         _upscale?,
+         _maintain_ratio?,
+         _options
+       ) do
+    {:error, :invalid_size}
+  end
 end

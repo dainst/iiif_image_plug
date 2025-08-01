@@ -306,6 +306,13 @@ defmodule IIIFImagePlug.V3Test do
 
       assert conn.state == :sent
       assert conn.status == 400
+
+      conn = conn(:get, "/#{@sample_jpg_name}/full/nope/0/default.jpg")
+
+      conn = DevServerRouter.call(conn, @opts)
+
+      assert conn.state == :sent
+      assert conn.status == 400
     end
 
     test "returns 400 for invalid percent size parameter" do
