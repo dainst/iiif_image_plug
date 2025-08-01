@@ -327,6 +327,9 @@ defmodule IIIFImagePlug.V3 do
         %Image{} = image,
         format
       } ->
+        # Use the requested format for content-type (since that's what we're delivering)
+        conn = put_resp_content_type_from_format(conn, format)
+
         cond do
           format not in @streamable and temp_dir == :buffer ->
             send_buffered(conn, image, format)
@@ -393,9 +396,6 @@ defmodule IIIFImagePlug.V3 do
   defp send_buffered(conn, %Image{} = image, format) do
     {:ok, buffer} = Image.write_to_buffer(image, ".#{format}")
 
-    # Use the requested format for content-type (since that's what we're delivering)
-    conn = put_resp_content_type_from_format(conn, format)
-
     send_resp(conn, 200, buffer)
   end
 
@@ -413,18 +413,11 @@ defmodule IIIFImagePlug.V3 do
 
     Image.write_to_file(image, file_path)
 
-    # Detect format from the written file path
-    format = Path.extname(file_path) |> String.trim_leading(".")
-    conn = put_resp_content_type_from_format(conn, format)
-
     send_file(conn, 200, file_path)
   end
 
   defp send_stream(conn, %Image{} = image, format) do
     stream = Image.write_to_stream(image, ".#{format}")
-
-    # Use the requested format for content-type (since that's what we're streaming)
-    conn = put_resp_content_type_from_format(conn, format)
 
     conn = send_chunked(conn, 200)
 
