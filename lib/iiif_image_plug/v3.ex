@@ -62,7 +62,7 @@ defmodule IIIFImagePlug.V3 do
 
   ## Returns
 
-  - `{:ok, data_request}` on success, where `info_request` is a `IIIFImagePlug.V3.DataRequest` struct.
+  - `{:ok, data_request}` on success, where `data_request` is a `IIIFImagePlug.V3.DataRequest` struct.
   - `{:error, request_error}` otherwise, where `request_error` is a `IIIFImagePlug.V3.RequestError` struct.
 
   ## Example
@@ -185,7 +185,7 @@ defmodule IIIFImagePlug.V3 do
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.send_resp(
-          status_code,
+          400,
           Jason.encode!(%{error: "Your rotation parameter '\#{requested_rotation}' is invalid!"})
         )
       end
