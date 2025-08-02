@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1
+- Fixed handling of size parameters that did not contain a comma, a regression bug.
+- Set proper content type headers for the requested image formats (thanks [neilberkman](https://github.com/neilberkman)). The automatic 
+detection can be manually overriden by setting the header in your `data_request/1` implementation.
+
 ## 0.6.0
 - Requested TIF image images are now written to a temporary file instead of to memory by default. 
 - Also a new plug option `:temp_dir` was added to define a custom temporary directory path for the generated TIF files. In memory creation is still possible by passing `:buffer` instead.
