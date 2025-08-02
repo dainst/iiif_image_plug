@@ -11,11 +11,11 @@ defmodule IIIFImagePlug.V3.Data.Rotation do
     defstruct [:degrees, flip?: false]
   end
 
-  def parse("0") do
+  def parse(value) when value in ["0", "360"] do
     %Rotation{degrees: 0}
   end
 
-  def parse("!0") do
+  def parse(value) when value in ["!0", "!360"] do
     %Rotation{degrees: 0, flip?: true}
   end
 
