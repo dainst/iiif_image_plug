@@ -124,7 +124,8 @@ defmodule IIIFImagePlug.V3.Data do
          %Image{} = image <- Size.apply(image, scaling),
          %Image{} = image <- page_optimize(area, scaling, file, image, pages),
          # Average is used for creating bitonal images, and we calculate it specifically for the
-         # selected region.
+         # selected region. We do not want non 90° rotation whitespace to be reflected in the average,
+         # that is why we calcuate it before the rotation is applied.
          average <- calculate_average(image, quality_param),
          %Image{} = image <- Rotation.apply(image, rotation),
          %Image{} = final <- Quality.apply(image, quality_param, average) do
