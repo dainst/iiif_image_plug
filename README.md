@@ -8,10 +8,12 @@
 An Elixir [plug](https://hexdocs.pm/plug/readme.html) implementing the _International Image Interoperability Framework_ ([IIIF](https://iiif.io/)) image API specification. 
 
 - The goal of IIIF is to define a standardised REST API for serving high resolution images (art, photographes or archival material published by museums, universities and similar institutions).
+- This plug library needs you to define a mapping between image identifier (used in the REST API) and file system path, and will then do the image transformations based on the other request parameters for you.
 - There exist [several](https://iiif.io/get-started/iiif-viewers/) generic Javascript IIIF viewers that utilize this API to allow for optimized viewing (dynamic loading of parts of the image data based on zoom level/viewport).
 - WebGIS Javascript libraries like [leaflet](https://github.com/mejackreed/Leaflet-IIIF) or [OpenLayers](https://openlayers.org/en/latest/examples/iiif.html) support IIIF in one way or the other.
 - For the time beeing only (the current) Image API 3.0 is implemented, check out the IIIF [documentation](https://iiif.io/api/image/3.0/) for its capabilities.
 - The image processing is handled by [libvips](https://www.libvips.org/) via [Vix](https://hex.pm/packages/vix).
+- The IIIF image API implemented by this library is just one (the foundational) of currently six API standards the IIIF community defines for serving multimedia content and metadata.
 
 ## Installation 
 
