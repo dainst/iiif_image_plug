@@ -307,7 +307,8 @@ defmodule IIIFImagePlug.V3 do
           path_info: [identifier, region, size, rotation, quality_and_format]
         } = conn,
         %Options{
-          temp_dir: temp_dir
+          temp_dir: temp_dir,
+          format_options: format_options
         } =
           options,
         module
@@ -330,9 +331,11 @@ defmodule IIIFImagePlug.V3 do
         # Use the requested format for content-type (since that's what we're delivering)
         conn = put_resp_content_type_from_format(conn, format)
 
+        additional_format_options = Map.get(format_options, String.to_existing_atom(format), [])
+
         cond do
           format not in @streamable and temp_dir == :buffer ->
-            send_buffered(conn, image, format)
+            send_buffered(conn, image, format, additional_format_options)
 
           format not in @streamable ->
             prefix = :crypto.strong_rand_bytes(8) |> Base.url_encode64() |> binary_part(0, 8)
@@ -340,10 +343,15 @@ defmodule IIIFImagePlug.V3 do
             file_name =
               "#{prefix}_#{quality_and_format}"
 
-            send_temporary_file(conn, image, Path.join(temp_dir, file_name))
+            send_temporary_file(
+              conn,
+              image,
+              Path.join(temp_dir, file_name),
+              additional_format_options
+            )
 
           true ->
-            send_stream(conn, image, format)
+            send_stream(conn, image, format, additional_format_options)
         end
 
       {:error, %RequestError{status_code: code, msg: msg, response_headers: headers}} ->
@@ -393,13 +401,13 @@ defmodule IIIFImagePlug.V3 do
     )
   end
 
-  defp send_buffered(conn, %Image{} = image, format) do
-    {:ok, buffer} = Image.write_to_buffer(image, ".#{format}")
+  defp send_buffered(conn, %Image{} = image, format, format_options) do
+    {:ok, buffer} = Image.write_to_buffer(image, ".#{format}", format_options)
 
     send_resp(conn, 200, buffer)
   end
 
-  defp send_temporary_file(conn, %Image{} = image, file_path) do
+  defp send_temporary_file(conn, %Image{} = image, file_path, format_options) do
     parent = self()
 
     spawn(fn ->
@@ -411,13 +419,13 @@ defmodule IIIFImagePlug.V3 do
       end
     end)
 
-    Image.write_to_file(image, file_path)
+    Image.write_to_file(image, file_path, format_options)
 
     send_file(conn, 200, file_path)
   end
 
-  defp send_stream(conn, %Image{} = image, format) do
-    stream = Image.write_to_stream(image, ".#{format}")
+  defp send_stream(conn, %Image{} = image, format, format_options) do
+    stream = Image.write_to_stream(image, ".#{format}", format_options)
 
     conn = send_chunked(conn, 200)
 

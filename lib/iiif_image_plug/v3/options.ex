@@ -27,6 +27,21 @@ defmodule IIIFImagePlug.V3.Options do
   ### `:extra_formats` (default: `[:webp, :png]`)
   The [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your plug can deliver.
 
+  ### `:format_options` (default: `%{}`)
+  Add custom options libvips options to be used when writing the result file. Whatever you define here is passed directly to `Vix`
+  and not sanity checked again by the plug:
+
+      %Options{
+        format_options: %{
+          jpg: [Q: 5, background: [255, 255, 0]],
+          webp: [lossless: true],
+          png: [bitdepth: 1]
+        }
+      }
+
+  For possible values check out Vix' [`(...)save` functions](https://hexdocs.pm/vix/Vix.Vips.Operation.html#functions) for the
+  different output formats.
+
   ### `:temp_dir` (default: `uses System.tmp_dir!/0`)
 
   To be more precise, the default evaluates [System.tmp_dir!/0](https://hexdocs.pm/elixir/System.html#tmp_dir!/0) and creates
@@ -46,6 +61,7 @@ defmodule IIIFImagePlug.V3.Options do
             max_area: 10000 * 10000,
             preferred_formats: [:jpg],
             extra_formats: [:webp, :png],
+            format_options: %{},
             temp_dir: Path.join(System.tmp_dir!(), "iiif_image_plug")
 
   @type t :: %__MODULE__{
@@ -54,6 +70,7 @@ defmodule IIIFImagePlug.V3.Options do
           max_area: integer(),
           preferred_formats: list(),
           extra_formats: list(),
+          format_options: map(),
           temp_dir: String.t() | atom()
         }
 end

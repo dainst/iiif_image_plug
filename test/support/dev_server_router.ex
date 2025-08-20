@@ -59,6 +59,17 @@ defmodule DevServerRouter do
     init_opts: %Options{}
   )
 
+  forward("/custom_format_options",
+    to: DefaultPlug,
+    init_opts: %Options{
+      format_options: %{
+        jpg: [Q: 5, background: [255, 255, 0]],
+        webp: [lossless: true],
+        png: [bitdepth: 1]
+      }
+    }
+  )
+
   forward("/",
     to: DefaultPlug,
     init_opts:

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.0
+- Added a plug option `:format_options` to allow the specification of libvips save options for individual formats (encoding quality etc.).
+
 ## 0.6.1
 - Fixed handling of size parameters that did not contain a comma, a regression bug.
 - Set proper content type headers for the requested image formats (thanks [neilberkman](https://github.com/neilberkman)). The automatic 

@@ -658,27 +658,63 @@ defmodule IIIFImagePlug.V3Test do
       assert conn.state in [:sent, :chunked]
       assert conn.status == 200
     end
+
+    test "format options get applied to result image" do
+      conn = conn(:get, "/custom_format_options/bentheim_mill.jpg/full/max/0/default.png")
+      conn = DevServerRouter.call(conn, @opts)
+
+      {:ok, from_file} =
+        Image.open("#{@expected_files_root}/bitdepths_1.png")
+
+      {:ok, from_response} = Image.from_binary(conn.resp_body)
+
+      assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+
+      conn = conn(:get, "/custom_format_options/bentheim_mill.jpg/full/max/0/bitonal.webp")
+      conn = DevServerRouter.call(conn, @opts)
+
+      {:ok, from_file} =
+        Image.open("#{@expected_files_root}/lossless.webp")
+
+      {:ok, from_response} = Image.from_binary(conn.resp_body)
+
+      assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+
+      conn = conn(:get, "/custom_format_options/bentheim_mill.jpg/full/max/45/default.jpg")
+      conn = DevServerRouter.call(conn, @opts)
+
+      {:ok, from_file} =
+        Image.open("#{@expected_files_root}/low_quality_yellow_background.jpg")
+
+      {:ok, from_response} = Image.from_binary(conn.resp_body)
+
+      assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+    end
   end
 
   defp get_expected_file_paths() do
     File.ls!(@expected_files_root)
     |> Enum.map(fn file_name ->
-      File.ls!("#{@expected_files_root}/#{file_name}")
-      |> Enum.map(fn region ->
-        File.ls!("#{@expected_files_root}/#{file_name}/#{region}")
-        |> Enum.map(fn size ->
-          File.ls!("#{@expected_files_root}/#{file_name}/#{region}/#{size}")
-          |> Enum.map(fn rotation ->
-            File.ls!("#{@expected_files_root}/#{file_name}/#{region}/#{size}/#{rotation}")
-            |> Enum.map(fn quality_and_format ->
-              {file_name, "#{region}/#{size}/#{rotation}/#{quality_and_format}"}
+      if File.dir?("#{@expected_files_root}/#{file_name}") do
+        File.ls!("#{@expected_files_root}/#{file_name}")
+        |> Enum.map(fn region ->
+          File.ls!("#{@expected_files_root}/#{file_name}/#{region}")
+          |> Enum.map(fn size ->
+            File.ls!("#{@expected_files_root}/#{file_name}/#{region}/#{size}")
+            |> Enum.map(fn rotation ->
+              File.ls!("#{@expected_files_root}/#{file_name}/#{region}/#{size}/#{rotation}")
+              |> Enum.map(fn quality_and_format ->
+                {file_name, "#{region}/#{size}/#{rotation}/#{quality_and_format}"}
+              end)
             end)
+            |> List.flatten()
           end)
           |> List.flatten()
         end)
         |> List.flatten()
-      end)
-      |> List.flatten()
+      else
+        []
+      end
     end)
     |> List.flatten()
   end
