@@ -10,8 +10,11 @@ defmodule IIIFImagePlug.MixProject do
       start_permanent: Mix.env() == :prod,
       test_coverage: [
         ignore_modules: [
+          BehindProxyPlug,
+          ContentTypeOverridePlug,
           Custom404Plug,
           CustomResponseHeaderPlug,
+          CustomRequestErrorPlug,
           DefaultPlug,
           DevServer,
           DevServerRouter,
