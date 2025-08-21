@@ -58,7 +58,7 @@ defmodule IIIFImagePlug.V3 do
         "/tmp/\#{Path.join(conn.path_info)}"
       end
   """
-  @callback info_call(conn :: Conn.t()) :: {:continue, Conn.t() | {:abort, Conn.t()}}
+  @callback info_call(conn :: Conn.t()) :: {:continue, Conn.t()} | {:abort, Conn.t()}
 
   @doc """
   __Required__ callback function invoked on information requests (`info.json`), that maps the given _identifier_ to an
@@ -142,7 +142,7 @@ defmodule IIIFImagePlug.V3 do
         conn
       end
   """
-  @callback data_call(conn :: Conn.t()) :: {:continue, Conn.t() | {:abort, Conn.t()}}
+  @callback data_call(conn :: Conn.t()) :: {:continue, Conn.t()} | {:abort, Conn.t()}
 
   @doc """
   __Required__ callback function invoked on image data requests, that maps the given _identifier_ to an
