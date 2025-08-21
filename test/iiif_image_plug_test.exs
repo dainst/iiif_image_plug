@@ -550,7 +550,7 @@ defmodule IIIFImagePlug.V3Test do
       assert String.starts_with?(content_type, "image/tiff")
     end
 
-    test "response headers from DataRequest are applied along with correct content-type" do
+    test "response headers from DataRequestMetadata are applied along with correct content-type" do
       conn = conn(:get, "/custom_response_headers/#{@sample_jpg_name}/full/max/0/default.jpg")
 
       conn = DevServerRouter.call(conn, @opts)
@@ -569,7 +569,7 @@ defmodule IIIFImagePlug.V3Test do
     end
 
     test "custom content-type in response headers is preserved" do
-      # Test that custom content-type headers in DataRequest are preserved
+      # Test that custom content-type headers in DataRequestMetadata are preserved
       conn = conn(:get, "/content_type_override/custom_type.jpg/full/max/0/default.jpg")
 
       conn = DevServerRouter.call(conn, @opts)
@@ -692,6 +692,54 @@ defmodule IIIFImagePlug.V3Test do
     end
   end
 
+  test "`info_call/1` and `info_response/2` callbacks can be used to implement naive data caching mechanism" do
+    on_exit(&delete_tmp/0)
+
+    log =
+      capture_log(fn ->
+        conn = conn(:get, "/custom_caching/bentheim.jpg/info.json")
+        DevServerRouter.call(conn, @opts)
+      end)
+
+    assert log =~ "[info] Generating JSON file."
+    assert log =~ "[info] Caching JSON at './test/tmp/bentheim.jpg/info.json'."
+    refute log =~ "[info] Sending cached file."
+
+    log =
+      capture_log(fn ->
+        conn = conn(:get, "/custom_caching/bentheim.jpg/info.json")
+        DevServerRouter.call(conn, @opts)
+      end)
+
+    refute log =~ "[info] Generating JSON file."
+    refute log =~ "[info] Caching JSON at './test/tmp/bentheim.jpg/info.json'."
+    assert log =~ "[info] Sending cached file."
+  end
+
+  test "`data_call/1` and `data_response/3` callbacks can be used to implement naive data caching mechanism" do
+    on_exit(&delete_tmp/0)
+
+    log =
+      capture_log(fn ->
+        conn = conn(:get, "/custom_caching/bentheim.jpg/full/max/0/default.jpg")
+        DevServerRouter.call(conn, @opts)
+      end)
+
+    assert log =~ "[info] Continue with processing."
+    assert log =~ "[info] Caching image at './test/tmp/bentheim.jpg/full/max/0/default.jpg'."
+    refute log =~ "[info] Sending cached file."
+
+    log =
+      capture_log(fn ->
+        conn = conn(:get, "/custom_caching/bentheim.jpg/full/max/0/default.jpg")
+        DevServerRouter.call(conn, @opts)
+      end)
+
+    refute log =~ "[info] Continue with processing."
+    refute log =~ "[info] Caching image at './test/tmp/bentheim.jpg/full/max/0/default.jpg'."
+    assert log =~ "[info] Sending cached file."
+  end
+
   defp get_expected_file_paths() do
     File.ls!(@expected_files_root)
     |> Enum.map(fn file_name ->
@@ -718,4 +766,6 @@ defmodule IIIFImagePlug.V3Test do
     end)
     |> List.flatten()
   end
+
+  defp delete_tmp(), do: File.rm_rf!("./test/tmp")
 end

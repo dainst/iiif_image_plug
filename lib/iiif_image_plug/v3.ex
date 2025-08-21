@@ -5,9 +5,9 @@ defmodule IIIFImagePlug.V3 do
 
   alias IIIFImagePlug.V3.{
     Data,
-    DataRequest,
+    DataRequestMetadata,
     Info,
-    InfoRequest,
+    InfoRequestMetadata,
     Options,
     RequestError
   }
@@ -21,23 +21,63 @@ defmodule IIIFImagePlug.V3 do
   """
 
   @doc """
+  __Optional__ callback function that gets invoked at the start of an image information request,
+  before any further evaluation is done.
+
+  If you want the plug to continue processing the information request, return `{:continue, conn}`,
+  otherwise you might instruct the plug to stop further processing by returning `{:abort, conn}`.
+  This can be used in conjunction with `c:IIIFImagePlug.V3.info_response/1` to implement your
+  own caching strategy.
+
+  _(naive!) Example_
+
+      @impl true
+      def info_call(conn) do
+        path = construct_cache_path(conn)
+
+        if File.exists?(path) do
+          {:abort, Plug.Conn.send_file(conn, 200, path)}
+        else
+          {:continue, conn}
+        end
+      end
+
+      @impl true
+      def info_response(conn, info) do
+        path = construct_cache_path(conn)
+
+        path
+        |> Path.dirname()
+        |> File.mkdir_p!()
+
+        File.write!(path, Jason.encode!(data))
+        conn
+      end
+
+      defp construct_cache_path(conn) do
+        "/tmp/\#{Path.join(conn.path_info)}"
+      end
+  """
+  @callback info_call(conn :: Conn.t()) :: {:continue, Conn.t() | {:abort, Conn.t()}}
+
+  @doc """
   __Required__ callback function invoked on information requests (`info.json`), that maps the given _identifier_ to an
   image file.
 
   ## Returns
 
-  - `{:ok, info_request}` on success, where `info_request` is a `IIIFImagePlug.V3.InfoRequest` struct.
+  - `{:ok, info_metadata}` on success, where `info_metadata` is a `IIIFImagePlug.V3.InfoRequestMetadata` struct.
   - `{:error, request_error}` otherwise, where `request_error` is a `IIIFImagePlug.V3.RequestError` struct.
 
   ## Example
 
-      def info_request(identifier) do
+      def info_metadata(identifier) do
         MyApp.ContextModule.get_image_metadata(identifier)
         |> case do
           %{path: path, rights_statement: rights} ->
             {
               :ok,
-              %IIIFImagePlug.V3.InfoRequest{
+              %IIIFImagePlug.V3.InfoRequestMetadata{
                 path: path,
                 rights: rights
               }
@@ -53,8 +93,56 @@ defmodule IIIFImagePlug.V3 do
         end
       end
   """
-  @callback info_request(identifier :: String.t()) ::
-              {:ok, InfoRequest.t()} | {:error, RequestError.t()}
+  @callback info_metadata(identifier :: String.t()) ::
+              {:ok, InfoRequestMetadata.t()} | {:error, RequestError.t()}
+
+  @doc """
+  __Optional__ callback function that gets invoked after an `info.json` got sent, that gives you the
+  Elixir map that got sent as JSON.
+
+  This can be used in conjunction with `c:IIIFImagePlug.V3.info_call/1` to implement your
+  own caching strategy.
+  """
+  @callback info_response(conn :: Conn.t(), info :: map()) :: Conn.t()
+
+  @doc """
+  __Optional__ callback function that gets invoked at the start of each for an image data request, before
+  any processing is done.
+
+  If you want the plug to continue processing the information request, return `{:continue, conn}`,
+  otherwise you might instruct the plug to stop further processing by returning `{:abort, conn}`.
+  This can be used in conjunction with `c:IIIFImagePlug.V3.data_response/1` to implement your
+  own caching strategy.
+
+  _(naive!) Example_
+
+      @impl true
+      def data_call(conn) do
+        path = construct_cache_path(conn)
+
+        if File.exists?(path) do
+          {:abort, Plug.Conn.send_file(conn, 200, path)}
+        else
+          {:continue, conn}
+        end
+      end
+
+      @impl true
+      def data_metadata(identifier), do: DefaultPlug.data_metadata(identifier)
+
+      @impl true
+      def data_response(%Plug.Conn{} = conn, image, _format) do
+        path = construct_cache_path(conn)
+
+        path
+        |> Path.dirname()
+        |> File.mkdir_p!()
+
+        Vix.Vips.Image.write_to_file(image, path)
+        conn
+      end
+  """
+  @callback data_call(conn :: Conn.t()) :: {:continue, Conn.t() | {:abort, Conn.t()}}
 
   @doc """
   __Required__ callback function invoked on image data requests, that maps the given _identifier_ to an
@@ -62,18 +150,18 @@ defmodule IIIFImagePlug.V3 do
 
   ## Returns
 
-  - `{:ok, data_request}` on success, where `data_request` is a `IIIFImagePlug.V3.DataRequest` struct.
+  - `{:ok, data_metadata}` on success, where `data_metadata` is a `IIIFImagePlug.V3.DataRequestMetadata` struct.
   - `{:error, request_error}` otherwise, where `request_error` is a `IIIFImagePlug.V3.RequestError` struct.
 
   ## Example
 
-      def data_request(identifier) do
+      def data_metadata(identifier) do
         MyApp.ContextModule.get_image_path(identifier)
         |> case do
           {:ok, path} ->
             {
               :ok,
-              %IIIFImagePlug.V3.DataRequest{
+              %IIIFImagePlug.V3.DataRequestMetadata{
                 path: path,
                 response_headers: [
                   {"cache-control", "public, max-age=31536000, immutable"}
@@ -91,8 +179,14 @@ defmodule IIIFImagePlug.V3 do
         end
       end
   """
-  @callback data_request(identifier :: String.t()) ::
-              {:ok, DataRequest.t()} | {:error, RequestError.t()}
+  @callback data_metadata(identifier :: String.t()) ::
+              {:ok, DataRequestMetadata.t()} | {:error, RequestError.t()}
+
+  @doc """
+  __Optional__ callback function that gets invoked after an image got sent. This gives you access to the sent
+  [Vix.Vips.Image](Vix.Vips.Image) and the evaluated format.
+  """
+  @callback data_response(conn :: Conn.t(), image :: Image.t(), format: atom()) :: Conn.t()
 
   @doc """
   __Optional__ callback function to override the `:scheme` ("http" or "https") evaluated from the `Plug.Conn`, useful if your Elixir app runs behind a
@@ -147,10 +241,10 @@ defmodule IIIFImagePlug.V3 do
 
   One use case might be sending your own placeholder image instead of the JSON for failed data requests.
 
-  First customize your `data_request/1` implementation with a specific message (you do not want
+  First customize your `data_metadata/1` implementation with a specific message (you do not want
   to return an image on a failed `info.json` request):
 
-      def data_request(identifier) do
+      def data_metadata(identifier) do
         MyApp.ContextModule.get_image_path(identifier)
         |> case do
           {:ok, path} ->
@@ -160,7 +254,7 @@ defmodule IIIFImagePlug.V3 do
               :error,
               %IIIFImagePlug.V3.RequestError{
                 status_code: 404,
-                msg: :data_request_not_found
+                msg: :data_metadata_not_found
               }
             }
         end
@@ -168,7 +262,7 @@ defmodule IIIFImagePlug.V3 do
 
   Then add a custom `send_error/3` that picks up on the status code and message you defined:
 
-      def send_error(conn, 404, :data_request_not_found) do
+      def send_error(conn, 404, :data_metadata_not_found) do
         Plug.Conn.send_file(conn, 404, "\#{Application.app_dir(:my_app)}/images/not_found.webp")
       end
 
@@ -195,6 +289,8 @@ defmodule IIIFImagePlug.V3 do
               status_code :: number(),
               msg :: atom()
             ) :: Conn.t()
+
+  @optional_callbacks data_call: 1, data_response: 3, info_call: 1, info_response: 2
 
   defmacro __using__(_opts) do
     quote do
@@ -262,15 +358,71 @@ defmodule IIIFImagePlug.V3 do
   end
 
   def call(
-        %Plug.Conn{path_info: [identifier, "info.json"]} = conn,
+        %Plug.Conn{path_info: [_identifier, "info.json"]} = conn,
         %Options{} = options,
         module
       ) do
+    if function_exported?(module, :info_call, 1) do
+      case module.info_call(conn) do
+        {:continue, conn} ->
+          handle_info_metadata(conn, options, module)
+
+        {:abort, conn} ->
+          conn
+      end
+    else
+      handle_info_metadata(conn, options, module)
+    end
+  end
+
+  def call(
+        %Plug.Conn{path_info: [_identifier, _region, _size, _rotation, _quality_and_format]} =
+          conn,
+        %Options{} = options,
+        module
+      ) do
+    if function_exported?(module, :data_call, 1) do
+      case module.data_call(conn) do
+        {:continue, conn} ->
+          handle_data_metadata(conn, options, module)
+
+        {:abort, conn} ->
+          conn
+      end
+    else
+      handle_data_metadata(conn, options, module)
+    end
+  end
+
+  def call(
+        conn,
+        _options,
+        module
+      ) do
+    module.send_error(
+      conn,
+      404,
+      :unknown_route
+    )
+  end
+
+  defp handle_info_metadata(
+         %Plug.Conn{path_info: [identifier, _rest]} = conn,
+         %Options{} = options,
+         module
+       ) do
     case Info.generate_image_info(conn, identifier, options, module) do
       {:ok, {conn, info}} ->
-        conn
-        |> put_resp_content_type("application/ld+json")
-        |> send_resp(200, Jason.encode!(info))
+        conn =
+          conn
+          |> put_resp_content_type("application/ld+json")
+          |> send_resp(200, Jason.encode!(info))
+
+        if function_exported?(module, :info_response, 2) do
+          module.info_response(conn, info)
+        else
+          conn
+        end
 
       {:error, %RequestError{status_code: code, msg: msg, response_headers: headers}} ->
         headers
@@ -302,17 +454,16 @@ defmodule IIIFImagePlug.V3 do
 
   @streamable ["jpg", "webp", "gif", "png"]
 
-  def call(
-        %Plug.Conn{
-          path_info: [identifier, region, size, rotation, quality_and_format]
-        } = conn,
-        %Options{
-          temp_dir: temp_dir,
-          format_options: format_options
-        } =
-          options,
-        module
-      ) do
+  defp handle_data_metadata(
+         %Plug.Conn{
+           path_info: [identifier, region, size, rotation, quality_and_format]
+         } = conn,
+         %Options{
+           temp_dir: temp_dir,
+           format_options: format_options
+         } = options,
+         module
+       ) do
     case Data.get(
            conn,
            identifier,
@@ -331,27 +482,36 @@ defmodule IIIFImagePlug.V3 do
         # Use the requested format for content-type (since that's what we're delivering)
         conn = put_resp_content_type_from_format(conn, format)
 
-        additional_format_options = Map.get(format_options, String.to_existing_atom(format), [])
+        format_as_atom = String.to_existing_atom(format)
 
-        cond do
-          format not in @streamable and temp_dir == :buffer ->
-            send_buffered(conn, image, format, additional_format_options)
+        additional_format_options = Map.get(format_options, format_as_atom, [])
 
-          format not in @streamable ->
-            prefix = :crypto.strong_rand_bytes(8) |> Base.url_encode64() |> binary_part(0, 8)
+        conn =
+          cond do
+            format not in @streamable and temp_dir == :buffer ->
+              send_buffered(conn, image, format, additional_format_options)
 
-            file_name =
-              "#{prefix}_#{quality_and_format}"
+            format not in @streamable ->
+              prefix = :crypto.strong_rand_bytes(8) |> Base.url_encode64() |> binary_part(0, 8)
 
-            send_temporary_file(
-              conn,
-              image,
-              Path.join(temp_dir, file_name),
-              additional_format_options
-            )
+              file_name =
+                "#{prefix}_#{quality_and_format}"
 
-          true ->
-            send_stream(conn, image, format, additional_format_options)
+              send_temporary_file(
+                conn,
+                image,
+                Path.join(temp_dir, file_name),
+                additional_format_options
+              )
+
+            true ->
+              send_stream(conn, image, format, additional_format_options)
+          end
+
+        if function_exported?(module, :data_response, 3) do
+          module.data_response(conn, image, format_as_atom)
+        else
+          conn
         end
 
       {:error, %RequestError{status_code: code, msg: msg, response_headers: headers}} ->
@@ -387,18 +547,6 @@ defmodule IIIFImagePlug.V3 do
           type
         )
     end
-  end
-
-  def call(
-        conn,
-        _options,
-        module
-      ) do
-    module.send_error(
-      conn,
-      404,
-      :unknown_route
-    )
   end
 
   defp send_buffered(conn, %Image{} = image, format, format_options) do

@@ -1,14 +1,14 @@
 defmodule ExtraInfoPlug do
   @moduledoc false
   use IIIFImagePlug.V3
-  alias IIIFImagePlug.V3.InfoRequest
-  alias IIIFImagePlug.V3.DataRequest
+  alias IIIFImagePlug.V3.InfoRequestMetadata
+  alias IIIFImagePlug.V3.DataRequestMetadata
 
   @impl true
-  def info_request(identifier) do
+  def info_metadata(identifier) do
     {
       :ok,
-      %InfoRequest{
+      %InfoRequestMetadata{
         path: "test/images/#{identifier}",
         rights: "https://creativecommons.org/publicdomain/zero/1.0/",
         see_also: [
@@ -40,7 +40,7 @@ defmodule ExtraInfoPlug do
   end
 
   @impl true
-  def data_request(identifier), do: DefaultPlug.data_request(identifier)
+  def data_metadata(identifier), do: DefaultPlug.data_metadata(identifier)
 end
 
 defmodule Custom404Plug do
@@ -48,15 +48,15 @@ defmodule Custom404Plug do
   use IIIFImagePlug.V3
 
   alias IIIFImagePlug.V3.{
-    DataRequest,
-    InfoRequest
+    DataRequestMetadata,
+    InfoRequestMetadata
   }
 
   @impl true
-  def data_request(identifier), do: DefaultPlug.data_request(identifier)
+  def data_metadata(identifier), do: DefaultPlug.data_metadata(identifier)
 
   @impl true
-  def info_request(identifier), do: DefaultPlug.info_request(identifier)
+  def info_metadata(identifier), do: DefaultPlug.info_metadata(identifier)
 
   @impl true
   def send_error(%Plug.Conn{} = conn, 404, _error_code) do
@@ -74,15 +74,15 @@ defmodule BehindProxyPlug do
   use IIIFImagePlug.V3
 
   alias IIIFImagePlug.V3.{
-    DataRequest,
-    InfoRequest
+    DataRequestMetadata,
+    InfoRequestMetadata
   }
 
   @impl true
-  def data_request(identifier), do: DefaultPlug.data_request(identifier)
+  def data_metadata(identifier), do: DefaultPlug.data_metadata(identifier)
 
   @impl true
-  def info_request(identifier), do: DefaultPlug.info_request(identifier)
+  def info_metadata(identifier), do: DefaultPlug.info_metadata(identifier)
 
   @impl true
   def scheme(), do: "https"
@@ -99,17 +99,17 @@ defmodule CustomResponseHeaderPlug do
   use IIIFImagePlug.V3
 
   alias IIIFImagePlug.V3.{
-    DataRequest,
-    InfoRequest
+    DataRequestMetadata,
+    InfoRequestMetadata
   }
 
   @impl true
-  def info_request(identifier) do
+  def info_metadata(identifier) do
     {path, headers} = simulate_additional_identifiers(identifier)
 
     {
       :ok,
-      %InfoRequest{
+      %InfoRequestMetadata{
         path: path,
         response_headers: headers
       }
@@ -117,13 +117,13 @@ defmodule CustomResponseHeaderPlug do
   end
 
   @impl true
-  def data_request(identifier) do
+  def data_metadata(identifier) do
     {path, headers} =
       simulate_additional_identifiers(identifier)
 
     {
       :ok,
-      %DataRequest{
+      %DataRequestMetadata{
         path: path,
         response_headers: headers
       }
@@ -148,14 +148,14 @@ defmodule CustomRequestErrorPlug do
   alias IIIFImagePlug.V3.RequestError
 
   @impl true
-  def info_request("restricted.jpg"), do: unauthorized()
+  def info_metadata("restricted.jpg"), do: unauthorized()
 
-  def info_request(identifier), do: DefaultPlug.info_request(identifier)
+  def info_metadata(identifier), do: DefaultPlug.info_metadata(identifier)
 
   @impl true
-  def data_request("restricted.jpg"), do: unauthorized()
+  def data_metadata("restricted.jpg"), do: unauthorized()
 
-  def data_request(identifier), do: DefaultPlug.data_request(identifier)
+  def data_metadata(identifier), do: DefaultPlug.data_metadata(identifier)
 
   defp unauthorized() do
     {
@@ -174,21 +174,21 @@ defmodule ContentTypeOverridePlug do
   use IIIFImagePlug.V3
 
   alias IIIFImagePlug.V3.{
-    DataRequest,
-    InfoRequest
+    DataRequestMetadata,
+    InfoRequestMetadata
   }
 
   @impl true
-  def info_request(identifier), do: DefaultPlug.info_request(identifier)
+  def info_metadata(identifier), do: DefaultPlug.info_metadata(identifier)
 
   @impl true
-  def data_request(identifier) do
+  def data_metadata(identifier) do
     # Test that custom content-type headers are preserved
     case identifier do
       "custom_type.jpg" ->
         {
           :ok,
-          %DataRequest{
+          %DataRequestMetadata{
             path: "test/images/bentheim_mill.jpg",
             response_headers: [
               {"content-type", "image/custom"},
@@ -198,7 +198,83 @@ defmodule ContentTypeOverridePlug do
         }
 
       _ ->
-        DefaultPlug.data_request(identifier)
+        DefaultPlug.data_metadata(identifier)
     end
+  end
+end
+
+defmodule CachingPlug do
+  @moduledoc false
+  use IIIFImagePlug.V3
+
+  alias IIIFImagePlug.V3.{
+    DataRequestMetadata,
+    InfoRequestMetadata
+  }
+
+  require Logger
+
+  @impl true
+  def info_call(conn) do
+    path = construct_cache_path(conn)
+
+    if File.exists?(path) do
+      Logger.info("Sending cached file.")
+      {:abort, Plug.Conn.send_file(conn, 200, path)}
+    else
+      Logger.info("Generating JSON file.")
+      {:continue, conn}
+    end
+  end
+
+  @impl true
+  def info_metadata(identifier), do: DefaultPlug.info_metadata(identifier)
+
+  @impl true
+  def info_response(conn, data) do
+    path = construct_cache_path(conn)
+
+    Logger.info("Caching JSON at '#{path}'.")
+
+    path
+    |> Path.dirname()
+    |> File.mkdir_p!()
+
+    File.write!(path, Jason.encode!(data))
+    conn
+  end
+
+  @impl true
+  def data_call(conn) do
+    path = construct_cache_path(conn)
+
+    if File.exists?(path) do
+      Logger.info("Sending cached file.")
+      {:abort, Plug.Conn.send_file(conn, 200, path)}
+    else
+      Logger.info("Continue with processing.")
+      {:continue, conn}
+    end
+  end
+
+  @impl true
+  def data_metadata(identifier), do: DefaultPlug.data_metadata(identifier)
+
+  @impl true
+  def data_response(%Plug.Conn{} = conn, image, _format) do
+    path = construct_cache_path(conn)
+
+    Logger.info("Caching image at '#{path}'.")
+
+    path
+    |> Path.dirname()
+    |> File.mkdir_p!()
+
+    Vix.Vips.Image.write_to_file(image, path)
+    conn
+  end
+
+  defp construct_cache_path(conn) do
+    "./test/tmp/#{Path.join(conn.path_info)}"
   end
 end

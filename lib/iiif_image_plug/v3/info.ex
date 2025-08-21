@@ -5,7 +5,7 @@ defmodule IIIFImagePlug.V3.Info do
   alias Vix.Vips.Image
 
   alias IIIFImagePlug.V3.{
-    InfoRequest,
+    InfoRequestMetadata,
     Options
   }
 
@@ -24,7 +24,7 @@ defmodule IIIFImagePlug.V3.Info do
       when is_binary(identifier) do
     with {
            :ok,
-           %InfoRequest{
+           %InfoRequestMetadata{
              path: path,
              rights: rights,
              part_of: part_of,
@@ -33,7 +33,7 @@ defmodule IIIFImagePlug.V3.Info do
              response_headers: headers
            }
          } <-
-           using_module.info_request(identifier),
+           using_module.info_metadata(identifier),
          {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)} do
       {

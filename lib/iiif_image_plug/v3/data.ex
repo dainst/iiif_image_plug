@@ -9,7 +9,7 @@ defmodule IIIFImagePlug.V3.Data do
   }
 
   alias IIIFImagePlug.V3.{
-    DataRequest,
+    DataRequestMetadata,
     Options
   }
 
@@ -45,8 +45,8 @@ defmodule IIIFImagePlug.V3.Data do
       )
       when is_binary(identifier) and is_binary(region_param) and is_binary(size_param) and
              is_binary(rotation_param) and is_binary(quality_and_format_param) do
-    with {:ok, %DataRequest{path: path, response_headers: headers}} <-
-           using_module.data_request(identifier),
+    with {:ok, %DataRequestMetadata{path: path, response_headers: headers}} <-
+           using_module.data_metadata(identifier),
          {:file_exists, true} <- {:file_exists, File.exists?(path)},
          {:file_opened, {:ok, file}} <- {:file_opened, Image.new_from_file(path)},
          # Apply autorot to get apply exif rotations before any further operations.

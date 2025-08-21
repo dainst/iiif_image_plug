@@ -58,7 +58,7 @@ defmodule MyApp.IIIFPlug do
   # documentation for more.
 
   @impl true
-  def info_request(identifier) do
+  def info_metadata(identifier) do
     # The first required callback lets you inject some metadata 
     # from your application into the plug when it is responding to
     # an information request (info.json) for a specific `identifier`. 
@@ -70,7 +70,7 @@ defmodule MyApp.IIIFPlug do
       %{path: path, rights_statement: rights} ->
         {
           :ok,
-          %IIIFImagePlug.V3.InfoRequest{
+          %IIIFImagePlug.V3.InfoRequestMetadata{
             path: path,
             rights: rights
           }
@@ -87,18 +87,18 @@ defmodule MyApp.IIIFPlug do
   end
 
   @impl true
-  def data_request(identifier) do
+  def data_metadata(identifier) do
     # The second required callback lets you inject some metadata 
     # from your application into the plug when it is responding to
     # an actual image data request for a specific `identifier`. As 
-    # with `info_request/1`, the only required field is `:path`, which 
+    # with `info_metadata/1`, the only required field is `:path`, which 
     # tells the plug the file system path matching the given `identifier`.
     MyApp.ContextModule.get_image_path(identifier)
     |> case do
       {:ok, path} ->
         {
           :ok,
-          %IIIFImagePlug.V3.DataRequest{
+          %IIIFImagePlug.V3.DataRequestMetadata{
             path: path,      
             response_headers: [
               {"cache-control", "public, max-age=31536000, immutable"}
@@ -120,7 +120,7 @@ defmodule MyApp.IIIFPlug do
 ### CORS 
 
 For your service to fully implement the API specification, you need to properly configure Cross-Origin Resource Sharing (CORS). You could
-either set the correct headers in your `info_request/1` or `data_request/1` implementation or configure the appropriate headers in a plug
+either set the correct headers in your `info_metadata/1` or `data_metadata/1` implementation or configure the appropriate headers in a plug
 before this one ([cors_plug ](https://hex.pm/packages/cors_plug) was used in this example):
 
 ```elixir

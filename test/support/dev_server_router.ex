@@ -70,6 +70,11 @@ defmodule DevServerRouter do
     }
   )
 
+  forward("/custom_caching",
+    to: CachingPlug,
+    init_opts: %Options{}
+  )
+
   forward("/",
     to: DefaultPlug,
     init_opts:

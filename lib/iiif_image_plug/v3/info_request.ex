@@ -1,8 +1,8 @@
-defmodule IIIFImagePlug.V3.InfoRequest do
+defmodule IIIFImagePlug.V3.InfoRequestMetadata do
   @moduledoc """
   A struct used to inject values from your application into the plug when responding to information request (info.json).
 
-  See also `c:IIIFImagePlug.V3.info_request/1`.
+  See also `c:IIIFImagePlug.V3.info_metadata/1`.
 
   ## Fields
 
@@ -15,7 +15,7 @@ defmodule IIIFImagePlug.V3.InfoRequest do
 
   ## Example
 
-      %InfoRequest{
+      %InfoRequestMetadata{
         path: "test/images/my_image.jpg",
         rights: "https://creativecommons.org/publicdomain/zero/1.0/",
         see_also: [

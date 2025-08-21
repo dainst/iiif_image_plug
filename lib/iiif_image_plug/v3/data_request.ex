@@ -1,8 +1,8 @@
-defmodule IIIFImagePlug.V3.DataRequest do
+defmodule IIIFImagePlug.V3.DataRequestMetadata do
   @moduledoc """
   A struct used to inject values from your application into the plug when responding to image data requests.
 
-  See also `c:IIIFImagePlug.V3.data_request/1`.
+  See also `c:IIIFImagePlug.V3.data_metadata/1`.
 
   ## Fields
 
@@ -11,7 +11,7 @@ defmodule IIIFImagePlug.V3.DataRequest do
 
   ## Example
 
-      %DataRequest{
+      %DataRequestMetadata{
         path: "test/images/my_image.jpg",
         response_headers: [
           {"cache-control", "public, max-age=31536000, immutable"}

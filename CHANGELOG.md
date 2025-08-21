@@ -2,6 +2,8 @@
 
 ## 0.7.0
 - Added a plug option `:format_options` to allow the specification of libvips save options for individual formats (encoding quality etc.).
+- Added new optional callbacks to allow for caching implementations outside the plug.
+- Renamed `info_request/1` and `data_request/1` callbacks and associated structs to better align with new optional callbacks.
 
 ## 0.6.1
 - Fixed handling of size parameters that did not contain a comma, a regression bug.

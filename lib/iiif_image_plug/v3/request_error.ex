@@ -1,7 +1,7 @@
 defmodule IIIFImagePlug.V3.RequestError do
   @moduledoc """
   Used to inject an error code, message and response headers from your application into the plug
-  when a `c:IIIFImagePlug.V3.info_request/1` or `c:IIIFImagePlug.V3.data_request/1` is invalid (for
+  when a `c:IIIFImagePlug.V3.info_metadata/1` or `c:IIIFImagePlug.V3.data_metadata/1` is invalid (for
   example if the identifier does not match anything, 404, or the image is currently access restricted
   401 or 403).
 

@@ -3,15 +3,15 @@ defmodule DefaultPlug do
   use IIIFImagePlug.V3
 
   alias IIIFImagePlug.V3.{
-    DataRequest,
-    InfoRequest
+    DataRequestMetadata,
+    InfoRequestMetadata
   }
 
   @impl true
-  def info_request(identifier), do: {:ok, %InfoRequest{path: path(identifier)}}
+  def info_metadata(identifier), do: {:ok, %InfoRequestMetadata{path: path(identifier)}}
 
   @impl true
-  def data_request(identifier), do: {:ok, %DataRequest{path: path(identifier)}}
+  def data_metadata(identifier), do: {:ok, %DataRequestMetadata{path: path(identifier)}}
 
   defp path(identifier), do: "test/images/#{identifier}"
 end
