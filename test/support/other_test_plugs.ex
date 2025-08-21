@@ -215,12 +215,12 @@ defmodule CachingPlug do
   require Logger
 
   @impl true
-  def info_call(conn) do
+  def info_call(%Plug.Conn{} = conn) do
     path = construct_cache_path(conn)
 
     if File.exists?(path) do
       Logger.info("Sending cached file.")
-      {:abort, Plug.Conn.send_file(conn, 200, path)}
+      {:stop, Plug.Conn.send_file(conn, 200, path)}
     else
       Logger.info("Generating JSON file.")
       {:continue, conn}
@@ -231,7 +231,7 @@ defmodule CachingPlug do
   def info_metadata(identifier), do: DefaultPlug.info_metadata(identifier)
 
   @impl true
-  def info_response(conn, data) do
+  def info_response(%Plug.Conn{} = conn, data) do
     path = construct_cache_path(conn)
 
     Logger.info("Caching JSON at '#{path}'.")
@@ -241,16 +241,17 @@ defmodule CachingPlug do
     |> File.mkdir_p!()
 
     File.write!(path, Jason.encode!(data))
-    conn
+
+    {:stop, send_file(conn, 200, path)}
   end
 
   @impl true
-  def data_call(conn) do
+  def data_call(%Plug.Conn{} = conn) do
     path = construct_cache_path(conn)
 
     if File.exists?(path) do
       Logger.info("Sending cached file.")
-      {:abort, Plug.Conn.send_file(conn, 200, path)}
+      {:stop, Plug.Conn.send_file(conn, 200, path)}
     else
       Logger.info("Continue with processing.")
       {:continue, conn}
@@ -271,7 +272,8 @@ defmodule CachingPlug do
     |> File.mkdir_p!()
 
     Vix.Vips.Image.write_to_file(image, path)
-    conn
+
+    {:stop, send_file(conn, 200, path)}
   end
 
   defp construct_cache_path(conn) do

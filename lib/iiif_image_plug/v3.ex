@@ -21,11 +21,11 @@ defmodule IIIFImagePlug.V3 do
   """
 
   @doc """
-  __Optional__ callback function that gets invoked at the start of an image information request,
+  __Optional__ callback function that gets triggered at the start of an image information request,
   before any further evaluation is done.
 
   If you want the plug to continue processing the information request, return `{:continue, conn}`,
-  otherwise you might instruct the plug to stop further processing by returning `{:abort, conn}`.
+  otherwise you might instruct the plug to stop further processing by returning `{:stop, conn}`.
   This can be used in conjunction with `c:IIIFImagePlug.V3.info_response/1` to implement your
   own caching strategy.
 
@@ -36,7 +36,7 @@ defmodule IIIFImagePlug.V3 do
         path = construct_cache_path(conn)
 
         if File.exists?(path) do
-          {:abort, Plug.Conn.send_file(conn, 200, path)}
+          {:stop, Plug.Conn.send_file(conn, 200, path)}
         else
           {:continue, conn}
         end
@@ -51,17 +51,18 @@ defmodule IIIFImagePlug.V3 do
         |> File.mkdir_p!()
 
         File.write!(path, Jason.encode!(data))
-        conn
+
+        {:stop, send_file(conn, 200, path)}
       end
 
       defp construct_cache_path(conn) do
         "/tmp/\#{Path.join(conn.path_info)}"
       end
   """
-  @callback info_call(conn :: Conn.t()) :: {:continue, Conn.t()} | {:abort, Conn.t()}
+  @callback info_call(conn :: Conn.t()) :: {:continue, Conn.t()} | {:stop, Conn.t()}
 
   @doc """
-  __Required__ callback function invoked on information requests (`info.json`), that maps the given _identifier_ to an
+  __Required__ callback function triggered on information requests (`info.json`), that maps the given _identifier_ to an
   image file.
 
   ## Returns
@@ -97,20 +98,20 @@ defmodule IIIFImagePlug.V3 do
               {:ok, InfoRequestMetadata.t()} | {:error, RequestError.t()}
 
   @doc """
-  __Optional__ callback function that gets invoked after an `info.json` got sent, that gives you the
-  Elixir map that got sent as JSON.
+  __Optional__ callback function that gets triggered right before the `info.json` gets sent.
 
   This can be used in conjunction with `c:IIIFImagePlug.V3.info_call/1` to implement your
   own caching strategy.
   """
-  @callback info_response(conn :: Conn.t(), info :: map()) :: Conn.t()
+  @callback info_response(conn :: Conn.t(), info :: map()) ::
+              {:continue, Conn.t()} | {:stop, Conn.t()}
 
   @doc """
-  __Optional__ callback function that gets invoked at the start of each for an image data request, before
+  __Optional__ callback function that gets triggered at the start of each for an image data request, before
   any processing is done.
 
   If you want the plug to continue processing the information request, return `{:continue, conn}`,
-  otherwise you might instruct the plug to stop further processing by returning `{:abort, conn}`.
+  otherwise you might instruct the plug to stop further processing by returning `{:stop, conn}`.
   This can be used in conjunction with `c:IIIFImagePlug.V3.data_response/1` to implement your
   own caching strategy.
 
@@ -121,7 +122,7 @@ defmodule IIIFImagePlug.V3 do
         path = construct_cache_path(conn)
 
         if File.exists?(path) do
-          {:abort, Plug.Conn.send_file(conn, 200, path)}
+          {:stop, Plug.Conn.send_file(conn, 200, path)}
         else
           {:continue, conn}
         end
@@ -139,13 +140,14 @@ defmodule IIIFImagePlug.V3 do
         |> File.mkdir_p!()
 
         Vix.Vips.Image.write_to_file(image, path)
-        conn
+
+        {:stop, send_file(conn, 200, path)}
       end
   """
-  @callback data_call(conn :: Conn.t()) :: {:continue, Conn.t()} | {:abort, Conn.t()}
+  @callback data_call(conn :: Conn.t()) :: {:continue, Conn.t()} | {:stop, Conn.t()}
 
   @doc """
-  __Required__ callback function invoked on image data requests, that maps the given _identifier_ to an
+  __Required__ callback function triggered on image data requests, that maps the given _identifier_ to an
   image file.
 
   ## Returns
@@ -183,10 +185,10 @@ defmodule IIIFImagePlug.V3 do
               {:ok, DataRequestMetadata.t()} | {:error, RequestError.t()}
 
   @doc """
-  __Optional__ callback function that gets invoked after an image got sent. This gives you access to the sent
-  [Vix.Vips.Image](Vix.Vips.Image) and the evaluated format.
+  __Optional__ callback function that is triggered right before the final image gets rendered and sent.
   """
-  @callback data_response(conn :: Conn.t(), image :: Image.t(), format: atom()) :: Conn.t()
+  @callback data_response(conn :: Conn.t(), image :: Image.t(), format :: atom()) ::
+              {:continue, Conn.t()} | {:stop, Conn.t()}
 
   @doc """
   __Optional__ callback function to override the `:scheme` ("http" or "https") evaluated from the `Plug.Conn`, useful if your Elixir app runs behind a
@@ -367,7 +369,7 @@ defmodule IIIFImagePlug.V3 do
         {:continue, conn} ->
           handle_info_metadata(conn, options, module)
 
-        {:abort, conn} ->
+        {:stop, conn} ->
           conn
       end
     else
@@ -386,7 +388,7 @@ defmodule IIIFImagePlug.V3 do
         {:continue, conn} ->
           handle_data_metadata(conn, options, module)
 
-        {:abort, conn} ->
+        {:stop, conn} ->
           conn
       end
     else
@@ -413,15 +415,19 @@ defmodule IIIFImagePlug.V3 do
        ) do
     case Info.generate_image_info(conn, identifier, options, module) do
       {:ok, {conn, info}} ->
-        conn =
-          conn
-          |> put_resp_content_type("application/ld+json")
-          |> send_resp(200, Jason.encode!(info))
-
         if function_exported?(module, :info_response, 2) do
           module.info_response(conn, info)
         else
-          conn
+          {:continue, conn}
+        end
+        |> case do
+          {:continue, conn} ->
+            conn
+            |> put_resp_content_type("application/ld+json")
+            |> send_resp(200, Jason.encode!(info))
+
+          {:stop, conn} ->
+            conn
         end
 
       {:error, %RequestError{status_code: code, msg: msg, response_headers: headers}} ->
@@ -486,32 +492,36 @@ defmodule IIIFImagePlug.V3 do
 
         additional_format_options = Map.get(format_options, format_as_atom, [])
 
-        conn =
-          cond do
-            format not in @streamable and temp_dir == :buffer ->
-              send_buffered(conn, image, format, additional_format_options)
-
-            format not in @streamable ->
-              prefix = :crypto.strong_rand_bytes(8) |> Base.url_encode64() |> binary_part(0, 8)
-
-              file_name =
-                "#{prefix}_#{quality_and_format}"
-
-              send_temporary_file(
-                conn,
-                image,
-                Path.join(temp_dir, file_name),
-                additional_format_options
-              )
-
-            true ->
-              send_stream(conn, image, format, additional_format_options)
-          end
-
         if function_exported?(module, :data_response, 3) do
           module.data_response(conn, image, format_as_atom)
         else
-          conn
+          {:continue, conn}
+        end
+        |> case do
+          {:continue, conn} ->
+            cond do
+              format not in @streamable and temp_dir == :buffer ->
+                send_buffered(conn, image, format, additional_format_options)
+
+              format not in @streamable ->
+                prefix = :crypto.strong_rand_bytes(8) |> Base.url_encode64() |> binary_part(0, 8)
+
+                file_name =
+                  "#{prefix}_#{quality_and_format}"
+
+                send_temporary_file(
+                  conn,
+                  image,
+                  Path.join(temp_dir, file_name),
+                  additional_format_options
+                )
+
+              true ->
+                send_stream(conn, image, format, additional_format_options)
+            end
+
+          {:stop, conn} ->
+            conn
         end
 
       {:error, %RequestError{status_code: code, msg: msg, response_headers: headers}} ->
