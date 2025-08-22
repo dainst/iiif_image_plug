@@ -360,7 +360,7 @@ defmodule IIIFImagePlug.V3 do
   end
 
   def call(
-        %Plug.Conn{path_info: [_identifier, "info.json"]} = conn,
+        %Plug.Conn{path_info: [_identifier, "info.json"], method: "GET"} = conn,
         %Options{} = options,
         module
       ) do
@@ -378,7 +378,10 @@ defmodule IIIFImagePlug.V3 do
   end
 
   def call(
-        %Plug.Conn{path_info: [_identifier, _region, _size, _rotation, _quality_and_format]} =
+        %Plug.Conn{
+          path_info: [_identifier, _region, _size, _rotation, _quality_and_format],
+          method: "GET"
+        } =
           conn,
         %Options{} = options,
         module
