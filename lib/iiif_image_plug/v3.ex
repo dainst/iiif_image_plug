@@ -350,7 +350,7 @@ defmodule IIIFImagePlug.V3 do
   end
 
   @doc false
-  def call(%Plug.Conn{path_info: [identifier]} = conn, _options, module) do
+  def call(%Plug.Conn{path_info: [identifier], method: "GET"} = conn, _options, module) do
     conn
     |> resp(:found, "")
     |> put_resp_header(
@@ -397,6 +397,14 @@ defmodule IIIFImagePlug.V3 do
     else
       handle_data_metadata(conn, options, module)
     end
+  end
+
+  def call(%Plug.Conn{method: method} = conn, _options, module) when method != "GET" do
+    module.send_error(
+      conn,
+      405,
+      :method_not_allowed
+    )
   end
 
   def call(

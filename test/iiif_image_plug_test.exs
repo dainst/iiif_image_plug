@@ -740,6 +740,20 @@ defmodule IIIFImagePlug.V3Test do
     assert log =~ "[info] Sending cached file."
   end
 
+  test "returns 405 for non GET requests" do
+    conn = conn(:put, "/#{@sample_jpg_name}")
+    conn = DevServerRouter.call(conn, @opts)
+    assert conn.status == 405
+
+    conn = conn(:put, "/#{@sample_jpg_name}/info.json")
+    conn = DevServerRouter.call(conn, @opts)
+    assert conn.status == 405
+
+    conn = conn(:put, "/#{@sample_jpg_name}/full/max/0/default.jpg")
+    conn = DevServerRouter.call(conn, @opts)
+    assert conn.status == 405
+  end
+
   defp get_expected_file_paths() do
     File.ls!(@expected_files_root)
     |> Enum.map(fn file_name ->
