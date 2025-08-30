@@ -28,7 +28,7 @@ defmodule IIIFImagePlug.V3.Options do
   The [extra formats](https://iiif.io/api/image/3.0/#57-extra-functionality) your plug can deliver.
 
   ### `:format_options` (default: `%{}`)
-  Add custom options libvips options to be used when writing the result file. Whatever you define here is passed directly to `Vix`
+  Add custom libvips options to be used when creating the response images. Whatever you define here is passed directly to `Vix`
   and not sanity checked again by the plug:
 
       %Options{
