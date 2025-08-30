@@ -2,7 +2,7 @@
 
 ## 0.7.0
 
-- __Braking change__: Renamed `info_request/1` and `data_request/1` callbacks to `info_metadata/1` and `data_metadata/1` respectively, as well as the
+- __Breaking change__: Renamed `info_request/1` and `data_request/1` callbacks to `info_metadata/1` and `data_metadata/1` respectively, as well as the
 associated structs to better align with new optional callbacks (see below).
 - Added 4 optional callbacks that hook right into the start and end of both the information and data request handling. This was primarily added
 to allow users to implement their own caching outside the plug. For more details see the `IIIFImagePlug.V3` docs.
