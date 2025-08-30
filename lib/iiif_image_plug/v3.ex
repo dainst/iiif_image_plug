@@ -26,7 +26,7 @@ defmodule IIIFImagePlug.V3 do
 
   If you want the plug to continue processing the information request, return `{:continue, conn}`,
   otherwise you might instruct the plug to stop further processing by returning `{:stop, conn}`.
-  This can be used in conjunction with `c:IIIFImagePlug.V3.info_response/1` to implement your
+  This can be used in conjunction with `c:IIIFImagePlug.V3.info_response/2` to implement your
   own caching strategy.
 
   _(naive!) Example_
@@ -100,19 +100,20 @@ defmodule IIIFImagePlug.V3 do
   @doc """
   __Optional__ callback function that gets triggered right before the `info.json` gets sent.
 
-  This can be used in conjunction with `c:IIIFImagePlug.V3.info_call/1` to implement your
+  This could be used in conjunction with `c:IIIFImagePlug.V3.info_call/1` to implement your
   own caching strategy.
   """
   @callback info_response(conn :: Conn.t(), info :: map()) ::
               {:continue, Conn.t()} | {:stop, Conn.t()}
 
   @doc """
-  __Optional__ callback function that gets triggered at the start of each for an image data request, before
+  __Optional__ callback function that gets triggered at the start of each image data request, before
   any processing is done.
 
-  If you want the plug to continue processing the information request, return `{:continue, conn}`,
+  If you want the plug to continue processing the data request, return `{:continue, conn}`,
   otherwise you might instruct the plug to stop further processing by returning `{:stop, conn}`.
-  This can be used in conjunction with `c:IIIFImagePlug.V3.data_response/1` to implement your
+
+  This could be used in conjunction with `c:IIIFImagePlug.V3.data_response/3` to implement your
   own caching strategy.
 
   _(naive!) Example_
@@ -129,10 +130,7 @@ defmodule IIIFImagePlug.V3 do
       end
 
       @impl true
-      def data_metadata(identifier), do: DefaultPlug.data_metadata(identifier)
-
-      @impl true
-      def data_response(%Plug.Conn{} = conn, image, _format) do
+      def data_response(%Plug.Conn{} = conn, %Vix.Vips.Image{} = image, _format) do
         path = construct_cache_path(conn)
 
         path
@@ -186,6 +184,9 @@ defmodule IIIFImagePlug.V3 do
 
   @doc """
   __Optional__ callback function that is triggered right before the final image gets rendered and sent.
+
+  This could be used in conjunction with `c:IIIFImagePlug.V3.data_call/1` to implement your
+  own caching strategy.
   """
   @callback data_response(conn :: Conn.t(), image :: Image.t(), format :: atom()) ::
               {:continue, Conn.t()} | {:stop, Conn.t()}
