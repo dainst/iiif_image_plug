@@ -1,9 +1,12 @@
 # Changelog
 
 ## 0.7.0
-- Added a plug option `:format_options` to allow the specification of libvips save options for individual formats (encoding quality etc.).
-- Added new optional callbacks to allow for caching implementations outside the plug.
-- Renamed `info_request/1` and `data_request/1` callbacks and associated structs to better align with new optional callbacks.
+
+- __Braking change__: Renamed `info_request/1` and `data_request/1` callbacks to `info_metadata/1` and `data_metadata/1` respectively, as well as the
+associated structs to better align with new optional callbacks (see below).
+- Added 4 optional callbacks that hook right into the start and end of both the information and data request handling. This was primarily added
+to allow users to implement their own caching outside the plug. For more details see the `IIIFImagePlug.V3` docs.
+- Added a plug option `:format_options` to set libvips save options for individual formats (encoding quality etc.). For more details see the `IIIFImagePlug.V3.Options` module documentation.
 
 ## 0.6.1
 - Fixed handling of size parameters that did not contain a comma, a regression bug.
