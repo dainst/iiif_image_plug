@@ -11,6 +11,7 @@ defmodule IIIFImagePlug.MixProject do
       test_coverage: [
         ignore_modules: [
           BehindProxyPlug,
+          CachingPlug,
           ContentTypeOverridePlug,
           Custom404Plug,
           CustomResponseHeaderPlug,
