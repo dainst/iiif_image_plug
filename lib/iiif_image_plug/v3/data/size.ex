@@ -91,7 +91,7 @@ defmodule IIIFImagePlug.V3.Data.Size do
     |> Integer.parse()
     |> case do
       {percent, ""} when percent >= 0 and upscale? ->
-        requested_factor = percent / 100
+        requested_factor = percent * 0.01
 
         image_width = Image.width(image)
         image_height = Image.height(image)
@@ -115,7 +115,7 @@ defmodule IIIFImagePlug.V3.Data.Size do
         {:error, :invalid_size}
 
       {percent, ""} when percent >= 0 ->
-        %Scaling{scale: percent / 100}
+        %Scaling{scale: percent * 0.01}
 
       _ ->
         {:error, :invalid_size}

@@ -72,10 +72,10 @@ defmodule IIIFImagePlug.V3.Data.Region do
         image_width = Image.width(image)
         image_height = Image.height(image)
 
-        left_in_pixel = (image_width * (left / 100)) |> trunc()
-        top_in_pixel = (image_height * (top / 100)) |> trunc()
-        width_in_pixel = (image_width * (width / 100)) |> trunc()
-        height_in_pixel = (image_height * (height / 100)) |> trunc()
+        left_in_pixel = (image_width * (left * 0.01)) |> trunc()
+        top_in_pixel = (image_height * (top * 0.01)) |> trunc()
+        width_in_pixel = (image_width * (width * 0.01)) |> trunc()
+        height_in_pixel = (image_height * (height * 0.01)) |> trunc()
 
         %ExtractArea{
           left: left_in_pixel,
