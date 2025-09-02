@@ -141,6 +141,10 @@ defmodule IIIFImagePlug.V3 do
 
         {:stop, send_file(conn, 200, path)}
       end
+
+      defp construct_cache_path(conn) do
+        "/tmp/\#{Path.join(conn.path_info)}"
+      end
   """
   @callback data_call(conn :: Conn.t()) :: {:continue, Conn.t()} | {:stop, Conn.t()}
 
