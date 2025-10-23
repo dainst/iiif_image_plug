@@ -33,7 +33,7 @@ defmodule IIIFImagePlug.V3 do
 
       @impl true
       def info_call(conn) do
-        path = construct_cache_path(conn)
+        path = MyApp.get_cache_path(conn)
 
         if File.exists?(path) do
           {:stop, Plug.Conn.send_file(conn, 200, path)}
@@ -44,7 +44,7 @@ defmodule IIIFImagePlug.V3 do
 
       @impl true
       def info_response(conn, info) do
-        path = construct_cache_path(conn)
+        path = MyApp.get_cache_path(conn)
 
         path
         |> Path.dirname()
@@ -53,10 +53,6 @@ defmodule IIIFImagePlug.V3 do
         File.write!(path, Jason.encode!(data))
 
         {:stop, send_file(conn, 200, path)}
-      end
-
-      defp construct_cache_path(conn) do
-        "/tmp/\#{Path.join(conn.path_info)}"
       end
   """
   @callback info_call(conn :: Conn.t()) :: {:continue, Conn.t()} | {:stop, Conn.t()}
@@ -120,7 +116,7 @@ defmodule IIIFImagePlug.V3 do
 
       @impl true
       def data_call(conn) do
-        path = construct_cache_path(conn)
+        path = MyApp.get_cache_path(conn)
 
         if File.exists?(path) do
           {:stop, Plug.Conn.send_file(conn, 200, path)}
@@ -131,7 +127,7 @@ defmodule IIIFImagePlug.V3 do
 
       @impl true
       def data_response(%Plug.Conn{} = conn, %Vix.Vips.Image{} = image, _format) do
-        path = construct_cache_path(conn)
+        path = MyApp.get_cache_path(conn)
 
         path
         |> Path.dirname()
@@ -140,10 +136,6 @@ defmodule IIIFImagePlug.V3 do
         Vix.Vips.Image.write_to_file(image, path)
 
         {:stop, send_file(conn, 200, path)}
-      end
-
-      defp construct_cache_path(conn) do
-        "/tmp/\#{Path.join(conn.path_info)}"
       end
   """
   @callback data_call(conn :: Conn.t()) :: {:continue, Conn.t()} | {:stop, Conn.t()}
