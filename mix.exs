@@ -10,6 +10,7 @@ defmodule IIIFImagePlug.MixProject do
       start_permanent: Mix.env() == :prod,
       test_coverage: [
         ignore_modules: [
+          IIIFImagePlug.MediaTypes,
           BehindProxyPlug,
           CachingPlug,
           ContentTypeOverridePlug,

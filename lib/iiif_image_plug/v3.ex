@@ -607,29 +607,11 @@ defmodule IIIFImagePlug.V3 do
     # Only set content-type if not already set by response_headers
     case get_resp_header(conn, "content-type") do
       [] ->
-        content_type = format_to_content_type(format)
+        content_type = IIIFImagePlug.MediaTypes.get_by_format(format)
         put_resp_content_type(conn, content_type)
 
       _ ->
         conn
-    end
-  end
-
-  defp format_to_content_type(format) do
-    case String.downcase(format) do
-      "jpg" -> "image/jpeg"
-      "jpeg" -> "image/jpeg"
-      "png" -> "image/png"
-      "gif" -> "image/gif"
-      "webp" -> "image/webp"
-      "svg" -> "image/svg+xml"
-      "heif" -> "image/heif"
-      "heic" -> "image/heif"
-      "tif" -> "image/tiff"
-      "tiff" -> "image/tiff"
-      "bmp" -> "image/bmp"
-      "avif" -> "image/avif"
-      _ -> "application/octet-stream"
     end
   end
 
