@@ -607,7 +607,7 @@ defmodule IIIFImagePlug.V3 do
     # Only set content-type if not already set by response_headers
     case get_resp_header(conn, "content-type") do
       [] ->
-        content_type = IIIFImagePlug.MediaTypes.get_by_format(format)
+        content_type = MIME.type(format)
         put_resp_content_type(conn, content_type)
 
       _ ->
