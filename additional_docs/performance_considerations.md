@@ -5,7 +5,7 @@
 The performance is greatly improved if you provide your images in more than one resolution. This can be accomplished by providing image pyramids. Using `vips8` you can generate a TIF file pyramid:
 
 ```bash
-vips tiffsave input.jpg output_pyramid.tif --compression deflate --tile --tile-width 256 --tile-height 256 --pyramid 
+vips tiffsave input.jpg output_pyramid.tif --compression deflate --tile --tile-width 256 --tile-height 256 --pyramid
 ```
 
 The same can be achieved in Elixir with [Vix](https://hex.pm/packages/vix):
@@ -22,7 +22,6 @@ Operation.tiffsave(file, "output_pyramid.tif",
 )
 ```
 
-
 This will generate a single file that contains multiple pages of decreasing resolution:
 ![Image pyramid example image](image_pyramid.png)
 
@@ -32,11 +31,15 @@ The IIIF Image plug will automatically evaluate these pages and select the best 
 
 Some image formats can not be streamed directly and are written to a temporary file by default, see the documentation for the `IIIFImagePlug.V3.Options` module.
 
+## Caching
+
+You can implement your own caching strategy using the optional `info_call/1`, `info_response/2`, `data_call/1` and `data_response/3` callbacks. Have a look at the `*_call/1` functions' documentation for two naive examples.
+
 ## Alternatives to this library
 
-The plug aims to implement the "level 2" [compliance](https://iiif.io/api/image/3.0/compliance) for the IIIF image API. 
+The plug aims to implement the "level 2" [compliance](https://iiif.io/api/image/3.0/compliance) for the IIIF image API.
 
-If you only want to provide "level 0" data (the most basic required for tiled viewers), you can preprocess your input images beforehand and serve them as static assets (without any specialized library necessary at runtime). 
+If you only want to provide "level 0" data (the most basic required for tiled viewers), you can preprocess your input images beforehand and serve them as static assets (without any specialized library necessary at runtime).
 
 There exist several [resources](https://training.iiif.io/dhsi/day-one/level-0-static.html) on how to do this.
 
