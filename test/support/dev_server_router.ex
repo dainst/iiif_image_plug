@@ -86,7 +86,9 @@ defmodule DevServerRouter do
           extra_formats: [:webp, :png, :tif]
         }
       else
-        %Options{}
+        %Options{
+          extra_formats: [:webp, :png, :tif]
+        }
       end
   )
 end

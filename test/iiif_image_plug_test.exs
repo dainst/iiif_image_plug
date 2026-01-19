@@ -240,6 +240,20 @@ defmodule IIIFImagePlug.V3Test do
         {:ok, from_response} = Image.from_binary(conn.resp_body)
 
         assert {:ok, +0.0, _image} = Image.compare(from_file, from_response)
+
+        # Uncomment the case statement for debugging if the one above fails (first comment the one above accordingly)
+        # for debugging. This might be the case when updating the vix depedency, which already caused minimal encoding
+        # differences when comparing with ground truth images generated with a previous version.
+        #
+        # case Image.compare(from_file, from_response) do
+        #   {:ok, +0.0, _image} ->
+        #     true
+
+        #   _ ->
+        #     IO.inspect("#{@expected_files_root}/#{file_name}/#{path}")
+        #     true
+        # end
+        # |> assert()
       end)
       |> Enum.to_list()
     end

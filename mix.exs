@@ -52,13 +52,13 @@ defmodule IIIFImagePlug.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:plug, "~> 1.18"},
-      {:vix, "~> 0.33.0"},
+      {:plug, "~> 1.19"},
+      {:vix, "~> 0.36.0"},
       {:jason, "~> 1.4"},
       {:bandit, "~> 1.6", only: [:test, :dev]},
       {:cors_plug, "~> 3.0", only: [:test, :dev]},
       {:image, "~> 0.59.0", only: [:test]},
-      {:ex_doc, "~> 0.37", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.39", only: :dev, runtime: false}
     ]
   end
 
@@ -70,7 +70,7 @@ defmodule IIIFImagePlug.MixProject do
         "International Image Interoperability Framework" => "https://iiif.io/",
         "Elixir Forum" =>
           "https://elixirforum.com/t/iiif-image-plug-an-elixir-plug-implementing-the-iiif-image-api-specification/",
-          "GitHub" => "https://github.com/dainst/iiif_image_plug"
+        "GitHub" => "https://github.com/dainst/iiif_image_plug"
       }
     ]
   end
