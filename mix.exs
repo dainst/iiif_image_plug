@@ -79,7 +79,6 @@ defmodule IIIFImagePlug.MixProject do
     [
       extras: [
         "README.md": [title: "Overview"],
-        "additional_docs/performance_considerations.md": [title: "Performance considerations"],
         "CHANGELOG.md": [title: "Changelog"],
         LICENSE: [title: "License"]
       ]
@@ -93,8 +92,9 @@ defmodule IIIFImagePlug.MixProject do
   defp copy_doc_images(_) do
     # Images can not be added to the `:extras` in `docs()`. Instead we have to copy them
     # manually to the `doc/` directory generated when running `mix hex.publish`.
-    File.cp!("additional_docs/image_pyramid.png", "doc/image_pyramid.png")
     File.mkdir_p!("doc/test/images")
     File.cp!("test/images/bentheim.jpg", "doc/test/images/bentheim.jpg")
+    File.mkdir_p!("doc/additional_docs")
+    File.cp!("additional_docs/image_pyramid.png", "doc/additional_docs/image_pyramid.png")
   end
 end
