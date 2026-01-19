@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0
+
+Functionally the same as 0.7.0 with some small internal tweaks.
+
 ## 0.7.0
 
 - __Breaking change__: Renamed `info_request/1` and `data_request/1` callbacks to `info_metadata/1` and `data_metadata/1` respectively, as well as the
