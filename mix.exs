@@ -1,10 +1,13 @@
 defmodule IIIFImagePlug.MixProject do
   use Mix.Project
 
+  @version "1.0.0"
+  @source_url "https://codeberg.org/dainst/iiif_image_plug"
+
   def project do
     [
       app: :iiif_image_plug,
-      version: "1.0.0",
+      version: @version,
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -23,7 +26,7 @@ defmodule IIIFImagePlug.MixProject do
         ]
       ],
       name: "IIIFImagePlug",
-      source_url: "https://codeberg.org/dainst/iiif_image_plug",
+      source_url: @source_url,
       description: "An Elixir Plug implementing the IIIF image API specification.",
       deps: deps(),
       package: package(),
@@ -81,7 +84,10 @@ defmodule IIIFImagePlug.MixProject do
         "README.md": [title: "Overview"],
         "CHANGELOG.md": [title: "Changelog"],
         LICENSE: [title: "License"]
-      ]
+      ],
+      main: "readme",
+      source_url_pattern: "#{@source_url}/src/tag/#{@version}/%{path}#L%{line}",
+      source_ref: @version
     ]
   end
 
