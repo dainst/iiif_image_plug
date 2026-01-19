@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0
+## 1.0.0
 
 Functionally the same as 0.7.0 with some small internal tweaks.
 
