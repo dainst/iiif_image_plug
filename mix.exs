@@ -23,7 +23,7 @@ defmodule IIIFImagePlug.MixProject do
         ]
       ],
       name: "IIIFImagePlug",
-      source_url: "https://github.com/dainst/iiif_image_plug",
+      source_url: "https://codeberg.org/dainst/iiif_image_plug",
       description: "An Elixir Plug implementing the IIIF image API specification.",
       deps: deps(),
       package: package(),
@@ -67,10 +67,10 @@ defmodule IIIFImagePlug.MixProject do
       files: ~w(lib .formatter.exs mix.exs README* LICENSE* CHANGELOG* ),
       licenses: ["Apache-2.0"],
       links: %{
-        "GitHub" => "https://github.com/dainst/iiif_image_plug",
         "International Image Interoperability Framework" => "https://iiif.io/",
         "Elixir Forum" =>
-          "https://elixirforum.com/t/iiif-image-plug-an-elixir-plug-implementing-the-iiif-image-api-specification/"
+          "https://elixirforum.com/t/iiif-image-plug-an-elixir-plug-implementing-the-iiif-image-api-specification/",
+          "GitHub" => "https://github.com/dainst/iiif_image_plug"
       }
     ]
   end
