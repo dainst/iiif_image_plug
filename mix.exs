@@ -61,7 +61,7 @@ defmodule IIIFImagePlug.MixProject do
       {:bandit, "~> 1.6", only: [:test, :dev]},
       {:cors_plug, "~> 3.0", only: [:test, :dev]},
       {:image, "~> 0.59.0", only: [:test]},
-      {:ex_doc, "~> 0.39", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.40", only: :dev, runtime: false}
     ]
   end
 
