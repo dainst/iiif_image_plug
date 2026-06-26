@@ -315,16 +315,11 @@ defmodule IIIFImagePlug.V3 do
       # normally 100% replace the default. Because we want to give the users the opportunity to customize only specific
       # errors (based on pattern matching), the @before_compile below will re-add our defaults as a fallback.
 
-      def send_error(%Conn{} = conn, status_code, msg) do
-        IIIFImagePlug.V3.send_error(conn, status_code, msg)
-      end
-
       @before_compile {IIIFImagePlug.V3, :add_send_error_fallback}
 
       defoverridable scheme: 0,
                      host: 0,
-                     port: 0,
-                     send_error: 3
+                     port: 0
     end
   end
 
