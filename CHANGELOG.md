@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Fixed a compiler warning surfaced by Elixir 1.20.
+- Relaxed the `vix` dependency requirement to the minor version level, pinning it explicitly to a debug version may cause unnecessary conflicts in projects using this library.
+
 ## 1.0.0
 
 Functionally the same as 0.7.0 with some small internal tweaks.
